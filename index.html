@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>六本木ヒルズレジデンス B棟 | 3D物件紹介・デジタル内覧デモ — つむぎや株式会社</title>
+  <meta name="description" content="国土交通省 PLATEAU 2025 3D都市モデル × Unreal Engine 5.5 で構築した、六本木ヒルズレジデンス B棟の60fpsリアルタイム3D物件紹介Webデモ。映像制作・Webデモ制作：つむぎや株式会社。" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230a0c10'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Georgia,serif' font-size='34' fill='%23c9a566'%3ER%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Sans+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0a0c10;
+      --bg-surface: #12161f;
+      --bg-card: #171c27;
+      --bg-ivory: #f5f1e8;
+      --bg-ivory-2: #ede7db;
+      --ink-light: #f6f3ec;
+      --ink-muted: #a6aab4;
+      --ink-dark: #191a1d;
+      --ink-dark-muted: #5a574f;
+      --gold: #c9a566;
+      --gold-soft: rgba(201, 165, 102, 0.24);
+      --border-dark: rgba(255, 255, 255, 0.11);
+      --border-light: rgba(25, 26, 29, 0.12);
+      --serif: "Shippori Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+      --en: "Cormorant Garamond", Georgia, serif;
+      --sans: "Noto Sans JP", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      --radius: 6px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--ink-light);
+      font-family: var(--sans);
+      font-weight: 400;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    img, video { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; }
+
+    .container {
+      width: min(1240px, 90vw);
+      margin-inline: auto;
+    }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 60;
+      transition: background 0.35s var(--ease), border-color 0.35s var(--ease), backdrop-filter 0.35s var(--ease);
+      border-bottom: 1px solid transparent;
+    }
+    .site-header.scrolled {
+      background: rgba(10, 12, 16, 0.84);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom-color: var(--border-dark);
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      height: 76px;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .brand-en {
+      font-family: var(--en);
+      font-size: 16px;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .brand-jp {
+      font-family: var(--serif);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      color: rgba(246, 243, 236, 0.85);
+      margin-top: 2px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      font-size: 12.5px;
+      letter-spacing: 0.12em;
+      color: rgba(246, 243, 236, 0.82);
+    }
+    .nav-links a {
+      position: relative;
+      padding-block: 4px;
+      transition: color 0.25s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink-light);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      transition: all 0.25s;
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-gold {
+      background: var(--gold);
+      color: #111318;
+      border: 1px solid var(--gold);
+      padding: 10px 20px;
+      border-radius: 3px;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      transition: all 0.25s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-gold:hover { background: #dbba7d; transform: translateY(-1px); }
+    .btn-outline-gold {
+      background: rgba(10, 12, 16, 0.45);
+      color: var(--ink-light);
+      border: 1px solid rgba(201, 165, 102, 0.72);
+      padding: 13px 26px;
+      border-radius: 3px;
+      font-size: 13.5px;
+      letter-spacing: 0.08em;
+      transition: all 0.25s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+    }
+    .btn-outline-gold:hover {
+      background: rgba(201, 165, 102, 0.16);
+      border-color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 120px 0 36px;
+      overflow: hidden;
+      background: #080a0e;
+    }
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    .hero-media video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.84) contrast(1.04);
+    }
+    .hero-scrim {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(8, 10, 14, 0.58) 0%, rgba(8, 10, 14, 0.18) 38%, rgba(8, 10, 14, 0.76) 82%, #0a0c10 100%),
+        linear-gradient(90deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.25) 55%, rgba(8, 10, 14, 0.12) 100%);
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding-bottom: 42px;
+    }
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--en);
+      font-size: 14px;
+      letter-spacing: 0.28em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .hero-kicker::before {
+      content: "";
+      width: 36px;
+      height: 1px;
+      background: var(--gold);
+    }
+    .hero-title {
+      font-family: var(--serif);
+      font-size: clamp(32px, 5vw, 62px);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      line-height: 1.24;
+      margin: 0 0 18px;
+      text-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+    .hero-lead {
+      max-width: 640px;
+      font-size: clamp(14px, 1.45vw, 17px);
+      color: rgba(246, 243, 236, 0.90);
+      margin: 0 0 32px;
+      font-weight: 300;
+      line-height: 1.9;
+    }
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+    }
+    .hero-ctas .btn-gold {
+      padding: 14px 28px;
+      font-size: 14px;
+    }
+
+    /* Hero Bottom Chapter Strip */
+    .hero-chapters {
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      padding-top: 18px;
+    }
+    .chapter-rail {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .chapter-pill {
+      background: rgba(10, 12, 16, 0.56);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 10px 12px;
+      text-align: left;
+      color: rgba(246, 243, 236, 0.8);
+      transition: all 0.25s var(--ease);
+      backdrop-filter: blur(8px);
+    }
+    .chapter-pill:hover, .chapter-pill.active {
+      border-color: var(--gold);
+      background: rgba(201, 165, 102, 0.14);
+      color: #fff;
+    }
+    .chapter-num {
+      display: block;
+      font-family: var(--en);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+    .chapter-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ---------- Shared Section Styling ---------- */
+    section { padding: 108px 0; }
+    .sec-kicker {
+      font-family: var(--en);
+      font-size: 14px;
+      letter-spacing: 0.26em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .sec-title {
+      font-family: var(--serif);
+      font-size: clamp(26px, 3.2vw, 42px);
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: 0.06em;
+      margin: 0 0 22px;
+    }
+
+    /* ---------- Concept (Ivory Band) ---------- */
+    .band-ivory {
+      background: var(--bg-ivory);
+      color: var(--ink-dark);
+    }
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 64px;
+      align-items: start;
+      margin-bottom: 68px;
+    }
+    .concept-lead {
+      font-family: var(--serif);
+      font-size: clamp(24px, 2.7vw, 36px);
+      line-height: 1.55;
+      letter-spacing: 0.04em;
+      margin: 0;
+      font-weight: 500;
+    }
+    .concept-body p {
+      margin: 0 0 18px;
+      color: var(--ink-dark-muted);
+      font-size: 15px;
+      line-height: 2.0;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .metric-card {
+      border-top: 2px solid var(--gold);
+      padding-top: 20px;
+    }
+    .metric-val {
+      font-family: var(--en);
+      font-size: clamp(32px, 3.4vw, 46px);
+      font-weight: 500;
+      line-height: 1.1;
+      color: var(--ink-dark);
+      margin-bottom: 8px;
+    }
+    .metric-val span {
+      font-size: 18px;
+      margin-left: 4px;
+      color: #8c6e38;
+    }
+    .metric-title {
+      font-family: var(--serif);
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .metric-desc {
+      font-size: 12.5px;
+      color: var(--ink-dark-muted);
+      margin: 0;
+    }
+
+    /* ---------- Cinema Theater Section ---------- */
+    .band-dark {
+      background: var(--bg-dark);
+      color: var(--ink-light);
+    }
+    .band-surface {
+      background: var(--bg-surface);
+      color: var(--ink-light);
+    }
+    .theater-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+    .theater-note {
+      font-size: 13px;
+      color: var(--ink-muted);
+      max-width: 440px;
+      margin: 0;
+    }
+    .theater-frame {
+      position: relative;
+      background: #050608;
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
+    }
+    .theater-frame video {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+    .theater-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 14px 20px;
+      background: rgba(16, 20, 29, 0.96);
+      border-top: 1px solid var(--border-dark);
+      font-size: 13px;
+    }
+    .theater-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink-muted);
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 10px var(--gold);
+    }
+    .theater-chapters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+    .tc-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      text-align: left;
+      color: var(--ink-light);
+      transition: all 0.25s var(--ease);
+    }
+    .tc-card:hover, .tc-card.active {
+      border-color: var(--gold);
+      background: rgba(201, 165, 102, 0.10);
+      transform: translateY(-2px);
+    }
+    .tc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--en);
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+    .tc-title {
+      font-family: var(--serif);
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .tc-sub {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    /* ---------- 41F Penthouse Feature Rows ---------- */
+    .space-row {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 56px;
+      align-items: center;
+      margin-bottom: 84px;
+    }
+    .space-row:last-child { margin-bottom: 0; }
+    .space-row.reverse {
+      grid-template-columns: 1fr 1.25fr;
+    }
+    .space-row.reverse .space-photo { order: 2; }
+    .space-photo {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-dark);
+      cursor: zoom-in;
+      background: #0d1016;
+    }
+    .space-photo img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      transition: transform 0.7s var(--ease);
+    }
+    .space-photo:hover img { transform: scale(1.04); }
+    .space-badge {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      background: rgba(10, 12, 16, 0.78);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(201, 165, 102, 0.4);
+      padding: 6px 12px;
+      border-radius: 3px;
+      font-size: 11.5px;
+      letter-spacing: 0.1em;
+      color: var(--gold);
+    }
+    .space-num {
+      font-family: var(--en);
+      font-size: 15px;
+      letter-spacing: 0.24em;
+      color: var(--gold);
+      margin-bottom: 10px;
+      display: block;
+    }
+    .space-title {
+      font-family: var(--serif);
+      font-size: clamp(22px, 2.4vw, 32px);
+      font-weight: 500;
+      line-height: 1.4;
+      margin: 0 0 16px;
+    }
+    .space-desc {
+      font-size: 14.5px;
+      color: var(--ink-muted);
+      line-height: 1.95;
+      margin: 0 0 22px;
+    }
+    .space-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .space-tag {
+      font-size: 12px;
+      padding: 5px 12px;
+      border: 1px solid var(--border-dark);
+      border-radius: 999px;
+      color: rgba(246, 243, 236, 0.8);
+    }
+    .space-jump {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(201, 165, 102, 0.45);
+      padding-bottom: 4px;
+      transition: gap 0.25s;
+    }
+    .space-jump:hover { gap: 13px; }
+
+    /* ---------- Gallery Grid ---------- */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .gal-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-dark);
+      cursor: zoom-in;
+      background: #0d1016;
+    }
+    .gal-item img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      transition: transform 0.6s var(--ease);
+    }
+    .gal-item:hover img { transform: scale(1.05); }
+    .gal-cap {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 28px 16px 14px;
+      background: linear-gradient(180deg, transparent, rgba(8, 10, 14, 0.88));
+      font-size: 13px;
+      font-family: var(--serif);
+      letter-spacing: 0.05em;
+    }
+
+    /* ---------- Embedded 3D Digital Viewing Studio ---------- */
+    .tour3d-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 26px;
+    }
+    .tour3d-tabs {
+      display: inline-flex;
+      gap: 8px;
+      background: #0c0f16;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border-dark);
+    }
+    .tour3d-tab {
+      background: transparent;
+      color: var(--ink-muted);
+      border: 1px solid transparent;
+      padding: 10px 18px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: all 0.25s;
+    }
+    .tour3d-tab.active {
+      background: var(--gold);
+      color: #111318;
+      font-weight: 600;
+    }
+    .tour3d-tab:not(.active):hover { color: #fff; border-color: var(--border-dark); }
+    .tour3d-shell {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .tour3d-stage-wrap {
+      position: relative;
+      height: 580px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--gold-soft);
+      background: #07090d;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    }
+    .tour3d-stage {
+      position: absolute;
+      inset: 0;
+      touch-action: none;
+      cursor: grab;
+    }
+    .tour3d-stage:active { cursor: grabbing; }
+    .tour3d-stage.hidden { visibility: hidden; pointer-events: none; opacity: 0; }
+    .tour3d-hud-top {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      z-index: 12;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      gap: 10px;
+    }
+    .tour3d-pill {
+      pointer-events: auto;
+      background: rgba(10, 13, 20, 0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(201, 165, 102, 0.42);
+      color: var(--ink-light);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+    }
+    .tour3d-controls {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 12;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(10, 13, 20, 0.84);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-dark);
+      padding: 8px 12px;
+      border-radius: 999px;
+      max-width: 94%;
+    }
+    .t3-btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink-light);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .t3-btn:hover, .t3-btn.active {
+      background: var(--gold);
+      color: #111318;
+      border-color: var(--gold);
+      font-weight: 600;
+    }
+    .hotspot-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .hs-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .hs-pin:hover { transform: translate(-50%, -50%) scale(1.08); }
+    .hs-ring {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(201, 165, 102, 0.24);
+      border: 2px solid var(--gold);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      box-shadow: 0 0 22px rgba(201, 165, 102, 0.55);
+      backdrop-filter: blur(4px);
+    }
+    .hs-label {
+      background: rgba(10, 12, 16, 0.88);
+      border: 1px solid rgba(201, 165, 102, 0.5);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      white-space: nowrap;
+    }
+    .tour3d-side {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .side-title {
+      font-family: var(--serif);
+      font-size: 14px;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin: 0;
+    }
+    .room-list {
+      display: grid;
+      gap: 8px;
+    }
+    .room-btn {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 10px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      padding: 7px;
+      text-align: left;
+      color: var(--ink-light);
+      transition: all 0.2s;
+    }
+    .room-btn img {
+      width: 56px;
+      height: 38px;
+      object-fit: cover;
+      border-radius: 3px;
+    }
+    .room-btn.active, .room-btn:hover {
+      border-color: var(--gold);
+      background: rgba(201, 165, 102, 0.12);
+    }
+    .room-btn-name { font-size: 12.5px; font-weight: 500; display: block; }
+    .room-btn-sub { font-size: 11px; color: var(--ink-muted); display: block; }
+    .fp-box {
+      background: #0d1119;
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: auto;
+    }
+    .fp-svg { width: 100%; height: auto; display: block; }
+    .fp-zone {
+      fill: rgba(255, 255, 255, 0.04);
+      stroke: rgba(201, 165, 102, 0.45);
+      stroke-width: 1.2;
+      cursor: pointer;
+      transition: fill 0.2s;
+    }
+    .fp-zone:hover, .fp-zone.active { fill: rgba(201, 165, 102, 0.22); }
+    .fp-txt { fill: #d8d4ca; font-size: 10px; pointer-events: none; text-anchor: middle; }
+    .cesium-viewer-bottom { display: none !important; }
+
+    /* ---------- Specs Table (Ivory Band) ---------- */
+    .spec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 48px;
+      border-top: 1px solid var(--border-light);
+    }
+    .spec-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 14px;
+    }
+    .spec-row dt {
+      font-weight: 600;
+      color: var(--ink-dark);
+      font-family: var(--serif);
+      letter-spacing: 0.06em;
+    }
+    .spec-row dd {
+      margin: 0;
+      color: var(--ink-dark-muted);
+    }
+    .spec-disclaimer {
+      margin-top: 28px;
+      padding: 18px 22px;
+      background: var(--bg-ivory-2);
+      border-left: 3px solid var(--gold);
+      font-size: 12.5px;
+      color: var(--ink-dark-muted);
+      line-height: 1.85;
+    }
+
+    /* ---------- Inquiry & B2B CTA ---------- */
+    .inquiry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 56px;
+      align-items: start;
+    }
+    .b2b-cards {
+      display: grid;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .b2b-card {
+      padding: 18px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-left: 2px solid var(--gold);
+      border-radius: 4px;
+    }
+    .b2b-card h4 {
+      margin: 0 0 6px;
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ink-light);
+    }
+    .b2b-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--ink-muted);
+    }
+    .form-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 36px;
+    }
+    .form-row { margin-bottom: 18px; }
+    .form-row label {
+      display: block;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+      margin-bottom: 7px;
+      letter-spacing: 0.06em;
+    }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%;
+      background: #0d1017;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 4px;
+      padding: 12px 14px;
+      color: var(--ink-light);
+      font-family: var(--sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      border-color: var(--gold);
+    }
+    .form-note {
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      margin-top: 12px;
+    }
+    .form-toast {
+      display: none;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 4px;
+      background: rgba(201, 165, 102, 0.14);
+      border: 1px solid var(--gold);
+      color: var(--ink-light);
+      font-size: 13px;
+    }
+    .form-toast.show { display: block; }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      background: #06080b;
+      border-top: 1px solid var(--border-dark);
+      padding: 56px 0 44px;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 32px;
+      flex-wrap: wrap;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border-dark);
+      margin-bottom: 24px;
+    }
+    .footer-brand {
+      font-family: var(--serif);
+      font-size: 18px;
+      color: var(--ink-light);
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .footer-credits {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px 24px;
+      font-size: 11.5px;
+      color: rgba(166, 170, 180, 0.78);
+    }
+
+    /* ---------- Cinema Modal & Lightbox ---------- */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(5, 7, 10, 0.92);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      position: relative;
+      width: min(1120px, 94vw);
+      background: #0d1017;
+      border: 1px solid var(--gold-soft);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 5;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(10, 12, 16, 0.75);
+      color: #fff;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .modal-close:hover { border-color: var(--gold); color: var(--gold); }
+    .modal-box video, .modal-box img {
+      width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      background: #000;
+    }
+    .modal-caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 20px;
+      font-size: 13px;
+      color: var(--ink-muted);
+      border-top: 1px solid var(--border-dark);
+    }
+    .lb-nav {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ---------- Reveal Animation ---------- */
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1024px) {
+      .nav-links { display: none; }
+      .chapter-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .concept-grid, .space-row, .space-row.reverse, .tour3d-shell, .inquiry-grid, .spec-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+      }
+      .tour3d-stage-wrap { height: 460px; }
+      .space-row.reverse .space-photo { order: 0; }
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .theater-chapters, .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      section { padding: 72px 0; }
+      .header-inner { height: 60px; gap: 10px; }
+      .brand-en { font-size: 11.5px; letter-spacing: 0.13em; }
+      .brand-jp { font-size: 10px; letter-spacing: 0.06em; }
+      .header-actions .btn-gold { padding: 8px 12px; font-size: 11px; white-space: nowrap; }
+      .btn-ghost { display: none; }
+      .hero { padding: 88px 0 24px; }
+      .hero-title { font-size: 26px; letter-spacing: 0.04em; }
+      .chapter-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .theater-chapters, .gallery-grid, .metrics-grid { grid-template-columns: 1fr; }
+      .tour3d-stage-wrap { height: 420px; }
+      .tour3d-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+      .tour3d-tab { padding: 9px 8px; font-size: 11.5px; }
+      .tour3d-controls {
+        border-radius: 12px;
+        width: calc(100% - 20px);
+        max-width: none;
+        bottom: 10px;
+        padding: 6px 8px;
+        gap: 5px;
+      }
+      .t3-btn { padding: 5px 9px; font-size: 11px; }
+      .tour3d-pill { font-size: 10.5px; padding: 5px 10px; }
+      .form-box { padding: 26px 20px; }
+      .spec-row { grid-template-columns: 118px 1fr; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Navigation -->
+  <header class="site-header" id="siteHeader">
+    <div class="container header-inner">
+      <a href="#top" class="brand">
+        <span class="brand-en">ROPPONGI HILLS RESIDENCE B</span>
+        <span class="brand-jp">六本木ヒルズレジデンス B棟 ｜ 3D物件紹介デモ</span>
+      </a>
+      <nav class="nav-links" aria-label="メインナビゲーション">
+        <a href="#concept">CONCEPT</a>
+        <a href="#movie">MOVIE</a>
+        <a href="#tour3d">3D内覧</a>
+        <a href="#penthouse">41F MODEL</a>
+        <a href="#gallery">GALLERY</a>
+        <a href="#outline">OUTLINE</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn-ghost" id="heroMuteBtn" type="button">BGM: OFF</button>
+        <a href="#contact" class="btn-gold">制作・内覧相談</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 1. Full-Bleed Cinematic 60fps Video Hero -->
+  <section class="hero" id="top">
+    <div class="hero-media">
+      <video id="heroVideo" autoplay muted loop playsinline preload="metadata" poster="assets/hero_poster.jpg">
+        <source src="media/roppongi_ue5_60fps_web.mp4" type="video/mp4" />
+      </video>
+      <div class="hero-scrim"></div>
+    </div>
+
+    <div class="container hero-content">
+      <div class="hero-kicker">MINATO-KU, TOKYO &nbsp;—&nbsp; REAL-TIME 3D SHOWCASE</div>
+      <h1 class="hero-title">六本木ヒルズレジデンス B棟</h1>
+      <p class="hero-lead">
+        都心の象徴を一望する、地上41階・東向きの特等席。<br />
+        国土交通省 PLATEAU 2025 の実寸 3D 都市モデルと Unreal Engine 5.5 により、建築前・改装前でも「本物の街並み・光・眺望」を滑らかな 60fps 映像と Web で体感できる物件紹介デモです。
+      </p>
+      <div class="hero-ctas">
+        <button class="btn-gold" id="openTheaterBtn" type="button">▶ 音声ONで本編映像を見る（40秒・60fps）</button>
+        <a class="btn-outline-gold" href="#tour3d">360°室内・街並み 3D内覧を体験する →</a>
+      </div>
+    </div>
+
+    <div class="container hero-chapters">
+      <div class="chapter-rail" id="heroChapters">
+        <button class="chapter-pill active" data-time="0.5" type="button">
+          <span class="chapter-num">01 / 0:00</span>
+          <span class="chapter-label">港区3Dゴールデンアワー空撮</span>
+        </button>
+        <button class="chapter-pill" data-time="6.0" type="button">
+          <span class="chapter-num">02 / 0:06</span>
+          <span class="chapter-label">都心スカイライン・立地紹介</span>
+        </button>
+        <button class="chapter-pill" data-time="11.2" type="button">
+          <span class="chapter-num">03 / 0:11</span>
+          <span class="chapter-label">41Fリビング＆シャンデリア</span>
+        </button>
+        <button class="chapter-pill" data-time="16.4" type="button">
+          <span class="chapter-num">04 / 0:16</span>
+          <span class="chapter-label">窓越しの東京タワー正面眺望</span>
+        </button>
+        <button class="chapter-pill" data-time="21.6" type="button">
+          <span class="chapter-num">05 / 0:22</span>
+          <span class="chapter-label">ショーキッチン＆ダイニング</span>
+        </button>
+        <button class="chapter-pill" data-time="27.0" type="button">
+          <span class="chapter-num">06 / 0:27</span>
+          <span class="chapter-label">41Fスカイテラス眺望</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Concept & Verified Key Metrics (Ivory Editorial Band) -->
+  <section class="band-ivory" id="concept">
+    <div class="container">
+      <span class="sec-kicker">01 &nbsp; ARCHITECTURAL CONCEPT</span>
+      <div class="concept-grid reveal">
+        <h2 class="concept-lead">
+          まだ建っていない空間も、<br />
+          改装前の住戸も。<br />
+          実寸の光と眺望で、確信をつくる。
+        </h2>
+        <div class="concept-body">
+          <p>
+            億円単位の都心高額レジデンスにおいて、購入検討者が最も重視するのは「実際の階数から見える景色」と「空間の広がり」です。しかし、建築前の新築物件やリノベーション前の再販物件では、現地で実写撮影することができません。
+          </p>
+          <p>
+            本デモでは、国土交通省 Project PLATEAU（2025年度版・港区実寸3D都市モデル）を Unreal Engine 5.5 へ読み込み、41階東向きペントハウスの3D空間を実座標へ配置。窓の向こうに広がる麻布台ヒルズや東京タワー（東へ直線約1.46km）を、実寸・リアルタイムの自然光で再現しています。
+          </p>
+        </div>
+      </div>
+
+      <div class="metrics-grid reveal">
+        <div class="metric-card">
+          <div class="metric-val">43<span>F / B2F</span></div>
+          <div class="metric-title">地上43階建・高さ159.18m</div>
+          <p class="metric-desc">六本木ヒルズの中核を担う総戸数333戸のフラッグシップレジデンス。</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">1.46<span>km</span></div>
+          <div class="metric-title">東京タワーまで東へ直線距離</div>
+          <p class="metric-desc">PLATEAU実座標にもとづき、41階高さからの実寸眺望を再現。</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">171.6<span>㎡</span></div>
+          <div class="metric-title">最大クラス専有面積</div>
+          <p class="metric-desc">天井高3.5m・16mワイドスパン窓の41Fペントハウス空間をCGモデル化。</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">60<span>fps</span></div>
+          <div class="metric-title">Full HD 滑らか3D映像</div>
+          <p class="metric-desc">Unreal Engine 5.5 Lumenリアルタイム光×60fps補間による映画品質。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Interactive Full Movie Theater -->
+  <section class="band-dark" id="movie">
+    <div class="container">
+      <div class="theater-head reveal">
+        <div>
+          <span class="sec-kicker">02 &nbsp; PROMOTIONAL FILM</span>
+          <h2 class="sec-title">UE 5.5 × PLATEAU 2025 物件紹介本編（40秒・60fps）</h2>
+        </div>
+        <p class="theater-note">
+          下のシーンカードを選ぶと、該当チャプターへ即座に頭出し再生されます。スタジオ録音ピアノBGM付きでお楽しみいただけます。
+        </p>
+      </div>
+
+      <div class="theater-frame reveal">
+        <video id="mainMovie" controls playsinline preload="metadata" poster="assets/hero_poster.jpg">
+          <source src="media/roppongi_ue5_60fps_web.mp4" type="video/mp4" />
+        </video>
+        <div class="theater-bar">
+          <div class="theater-status">
+            <span class="live-dot"></span>
+            <span id="currentChapterText">チャプター 01：港区3Dゴールデンアワー空撮</span>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-ghost" id="toggleMainPlay" type="button">再生 / 一時停止</button>
+            <button class="btn-gold" id="openTheaterFromSec" type="button">大画面シアター表示</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="theater-chapters reveal" id="theaterChapters">
+        <button class="tc-card active" data-time="0.5" data-label="チャプター 01：港区3Dゴールデンアワー空撮" type="button">
+          <div class="tc-top"><span>SCENE 01</span><span>0:00</span></div>
+          <div class="tc-title">港区・麻布台ヒルズ〜東京タワー空撮</div>
+          <div class="tc-sub">2025年度版PLATEAU港区3D都市モデルによる広域ロケーション</div>
+        </button>
+        <button class="tc-card" data-time="6.0" data-label="チャプター 02：都心スカイライン・立地紹介" type="button">
+          <div class="tc-top"><span>SCENE 02</span><span>0:06</span></div>
+          <div class="tc-title">都心スカイライン低空グライド</div>
+          <div class="tc-sub">六本木・麻布エリアの高層ビル群と物件立地のスケール感</div>
+        </button>
+        <button class="tc-card" data-time="11.2" data-label="チャプター 03：41Fリビング空間（CGモデル）" type="button">
+          <div class="tc-top"><span>SCENE 03</span><span>0:11</span></div>
+          <div class="tc-title">41Fペントハウス・リビング空間</div>
+          <div class="tc-sub">天井高3.5m・天然大理石フロアと真鍮リングシャンデリア</div>
+        </button>
+        <button class="tc-card" data-time="16.4" data-label="チャプター 04：41F窓越しの東京タワー眺望" type="button">
+          <div class="tc-top"><span>SCENE 04</span><span>0:16</span></div>
+          <div class="tc-title">リビングから望む実寸の東京タワー</div>
+          <div class="tc-sub">全面ガラスウォールの向こうに広がるリアルタイム3D眺望</div>
+        </button>
+        <button class="tc-card" data-time="21.6" data-label="チャプター 05：ショーキッチン＆窓際ダイニング" type="button">
+          <div class="tc-top"><span>SCENE 05</span><span>0:22</span></div>
+          <div class="tc-title">ショーキッチン＆ダイニング</div>
+          <div class="tc-sub">ネロマルキーナ黒大理石アイランドとウォールナットダイニング</div>
+        </button>
+        <button class="tc-card" data-time="27.0" data-label="チャプター 06：41Fスカイテラス＆パノラマフィナーレ" type="button">
+          <div class="tc-top"><span>SCENE 06</span><span>0:27</span></div>
+          <div class="tc-title">41Fスカイテラス〜東京タワー正面</div>
+          <div class="tc-sub">チークデッキからガラス手すり越しに抜ける圧巻のパノラマ</div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 41F Penthouse Spaces -->
+  <section class="band-surface" id="penthouse">
+    <div class="container">
+      <span class="sec-kicker">03 &nbsp; 41F PENTHOUSE MODEL</span>
+      <h2 class="sec-title" style="margin-bottom:56px;">実寸の街並みと一体化する、41階ペントハウス空間</h2>
+
+      <article class="space-row reveal">
+        <div class="space-photo" data-lightbox="0">
+          <img src="assets/scene_02_living_reveal.jpg" alt="41階ペントハウス・リビングダイニングと全面ガラスウォール" loading="lazy" />
+          <span class="space-badge">UE 5.5 LUMEN REAL-TIME RENDER</span>
+        </div>
+        <div>
+          <span class="space-num">SPACE 01 — GRAND LIVING</span>
+          <h3 class="space-title">天井高3.5m、光と反射が響き合う<br />カラカッタ大理石のリビング</h3>
+          <p class="space-desc">
+            大判カラカッタゴールド大理石の床面に、二重の真鍮リングシャンデリアとゴールデンアワーの自然光が柔らかく映り込みます。16m幅の全面ガラスウォールが室内と都心の空をシームレスにつなぎます。
+          </p>
+          <div class="space-tags">
+            <span class="space-tag">天井高 3.5m</span>
+            <span class="space-tag">カラカッタ大理石</span>
+            <span class="space-tag">16mワイドスパン窓</span>
+          </div>
+          <button class="space-jump" data-jump-movie="11.2" type="button">この空間を動画で再生する →</button>
+        </div>
+      </article>
+
+      <article class="space-row reverse reveal">
+        <div class="space-photo" data-lightbox="1">
+          <img src="assets/scene_03_living_tokyo_tower.jpg" alt="41階リビングの窓から正面に見える麻布台ヒルズと東京タワー" loading="lazy" />
+          <span class="space-badge">EXACT 41F EAST VIEW — 1.46KM</span>
+        </div>
+        <div>
+          <span class="space-num">SPACE 02 — EAST PANORAMA VIEW</span>
+          <h3 class="space-title">窓の向こうに実寸でそびえる<br />麻布台ヒルズと東京タワー</h3>
+          <p class="space-desc">
+            背景の街並みは合成写真ではなく、国土交通省 PLATEAU 2025 の実3D都市モデルをそのまま配置しています。カメラが室内を歩くにつれて窓枠と東京タワーの視差がリアルに変化し、現地内覧さながらの臨場感を生み出します。
+          </p>
+          <div class="space-tags">
+            <span class="space-tag">PLATEAU 2025 実3D</span>
+            <span class="space-tag">リアルタイム視差</span>
+            <span class="space-tag">東向きワイド眺望</span>
+          </div>
+          <button class="space-jump" data-jump-movie="16.4" type="button">この眺望を動画で再生する →</button>
+        </div>
+      </article>
+
+      <article class="space-row reveal">
+        <div class="space-photo" data-lightbox="2">
+          <img src="assets/scene_04_kitchen_dining.jpg" alt="ネロマルキーナ黒大理石のアイランドキッチンとウォールナットダイニング" loading="lazy" />
+          <span class="space-badge">SHOW KITCHEN &amp; DINING</span>
+        </div>
+        <div>
+          <span class="space-num">SPACE 03 — SHOW KITCHEN &amp; DINING</span>
+          <h3 class="space-title">ネロマルキーナ黒大理石と<br />ウォールナットが織りなす社交空間</h3>
+          <p class="space-desc">
+            白い脈が走るネロマルキーナ黒大理石のアイランドキッチンに、真鍮のグースネック水栓と直線ペンダントを合わせたギャラリー仕立て。窓際のウォールナットダイニングからは港区の高層街を間近に望めます。
+          </p>
+          <div class="space-tags">
+            <span class="space-tag">黒大理石ウォーターフォール</span>
+            <span class="space-tag">ウォールナット無垢調</span>
+            <span class="space-tag">真鍮ライティング</span>
+          </div>
+          <button class="space-jump" data-jump-movie="21.6" type="button">このキッチンを動画で再生する →</button>
+        </div>
+      </article>
+
+      <article class="space-row reverse reveal">
+        <div class="space-photo" data-lightbox="3">
+          <img src="assets/scene_06_sky_terrace.jpg" alt="41階スカイテラスのガラス手すり越しに望む東京タワーと麻布台ヒルズ" loading="lazy" />
+          <span class="space-badge">41F SKY TERRACE</span>
+        </div>
+        <div>
+          <span class="space-num">SPACE 04 — SKY TERRACE</span>
+          <h3 class="space-title">地上約150mの特等席へ踏み出す<br />プライベート・スカイテラス</h3>
+          <p class="space-desc">
+            室内からそのままチークウッドデッキのテラスへ歩み出ると、視界を遮らないフレームレスガラス手すりの先に東京タワーと東京湾方向の水平線が開けます。時間帯を変えた夕景・夜景シミュレーションにも展開可能です。
+          </p>
+          <div class="space-tags">
+            <span class="space-tag">チークウッドデッキ</span>
+            <span class="space-tag">ガラス手すり</span>
+            <span class="space-tag">日照・夕景シミュレーション対応</span>
+          </div>
+          <button class="space-jump" data-jump-movie="27.0" type="button">テラス移動を動画で再生する →</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 5. Visual Gallery -->
+  <section class="band-dark" id="gallery">
+    <div class="container">
+      <div class="theater-head reveal">
+        <div>
+          <span class="sec-kicker">04 &nbsp; VISUAL GALLERY</span>
+          <h2 class="sec-title">Unreal Engine 5.5 レンダリングギャラリー</h2>
+        </div>
+        <p class="theater-note">各画像をクリックすると高精細フルスクリーンで細部をご覧いただけます。</p>
+      </div>
+
+      <div class="gallery-grid reveal">
+        <figure class="gal-item" data-lightbox="4">
+          <img src="assets/hero_poster.jpg" alt="港区・麻布台ヒルズ・東京タワー ゴールデンアワー3D空撮" loading="lazy" />
+          <figcaption class="gal-cap">01. 港区3D広域空撮（ゴールデンアワー）</figcaption>
+        </figure>
+        <figure class="gal-item" data-lightbox="5">
+          <img src="assets/scene_01_aerial.jpg" alt="都心スカイライン低空グライド" loading="lazy" />
+          <figcaption class="gal-cap">02. 麻布台ヒルズ・東京タワー 低空グライド</figcaption>
+        </figure>
+        <figure class="gal-item" data-lightbox="0">
+          <img src="assets/scene_02_living_reveal.jpg" alt="41階ペントハウス リビング全景" loading="lazy" />
+          <figcaption class="gal-cap">03. 41F ペントハウス・リビング全景</figcaption>
+        </figure>
+        <figure class="gal-item" data-lightbox="1">
+          <img src="assets/scene_03_living_tokyo_tower.jpg" alt="41階リビング窓越し 東京タワー正面眺望" loading="lazy" />
+          <figcaption class="gal-cap">04. リビング窓越し 東京タワー正面眺望</figcaption>
+        </figure>
+        <figure class="gal-item" data-lightbox="2">
+          <img src="assets/scene_04_kitchen_dining.jpg" alt="黒大理石アイランドキッチン" loading="lazy" />
+          <figcaption class="gal-cap">05. 黒大理石ウォーターフォールキッチン</figcaption>
+        </figure>
+        <figure class="gal-item" data-lightbox="6">
+          <img src="assets/scene_05_dining_skyline.jpg" alt="窓際ウォールナットダイニングと港区高層街" loading="lazy" />
+          <figcaption class="gal-cap">06. 窓際ダイニングと港区高層街</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. LIVE INTERACTIVE 3D DIGITAL VIEWING STUDIO (Three.js 360° Walkthrough + PLATEAU 2025 3D City) -->
+  <section class="band-surface" id="tour3d">
+    <div class="container">
+      <div class="tour3d-head reveal">
+        <div>
+          <span class="sec-kicker">05 &nbsp; INTERACTIVE 3D DIGITAL VIEWING</span>
+          <h2 class="sec-title" style="margin-bottom:8px;">360° 室内3D内覧 ＆ 実寸3D街並みシミュレーター</h2>
+          <p class="theater-note" style="max-width:600px;">
+            マウス・指ドラッグで自由に360°見回し、床の丸ピンや間取り図をタップして部屋間を移動できます。上部タブから国土交通省 PLATEAU 2025 の実寸3D港区街並み・階数別眺望へ切り替え可能です。
+          </p>
+        </div>
+        <div class="tour3d-tabs" role="tablist">
+          <button class="tour3d-tab active" id="tabIndoor3d" type="button" role="tab" aria-selected="true">360° 室内3D内覧</button>
+          <button class="tour3d-tab" id="tabCity3d" type="button" role="tab" aria-selected="false">PLATEAU 3D街並み・眺望</button>
+        </div>
+      </div>
+
+      <div class="tour3d-shell reveal">
+        <div class="tour3d-stage-wrap" id="tour3dStageWrap">
+          <!-- Indoor 360° Three.js Canvas -->
+          <div class="tour3d-stage" id="panoStage"></div>
+          <div class="hotspot-layer" id="panoHotspots"></div>
+          <!-- Outdoor PLATEAU 2025 CesiumJS Stage (lazy-initialized on tab click) -->
+          <div class="tour3d-stage hidden" id="cityStage"></div>
+
+          <div class="tour3d-hud-top">
+            <span class="tour3d-pill" id="tour3dStatus">41F リビング・ダイニング — ドラッグで見回し・ピンをクリックで移動</span>
+            <button class="t3-btn" id="btnTourFs" type="button">全画面</button>
+          </div>
+
+          <!-- Controls for Indoor 360° -->
+          <div class="tour3d-controls" id="controlsIndoor">
+            <button class="t3-btn" id="btnPanLeft" type="button">← 左</button>
+            <button class="t3-btn" id="btnPanRight" type="button">右 →</button>
+            <button class="t3-btn" id="btnZoomIn" type="button">＋ 拡大</button>
+            <button class="t3-btn" id="btnZoomOut" type="button">－ 引く</button>
+            <button class="t3-btn active" id="btnAutoRotate" type="button">自動360°回転</button>
+          </div>
+
+          <!-- Controls for PLATEAU 3D City -->
+          <div class="tour3d-controls" id="controlsCity" style="display:none;">
+            <button class="t3-btn active" data-city-cam="overview" type="button">広域3D俯瞰</button>
+            <button class="t3-btn" data-city-cam="f15" type="button">15F 眺望</button>
+            <button class="t3-btn" data-city-cam="f28" type="button">28F 眺望</button>
+            <button class="t3-btn" data-city-cam="f41" type="button">41F 東京タワー正面</button>
+            <button class="t3-btn active" data-city-time="13" type="button">昼景</button>
+            <button class="t3-btn" data-city-time="17" type="button">夕景</button>
+          </div>
+        </div>
+
+        <!-- Synchronized Room Switcher + Interactive SVG Floorplan -->
+        <aside class="tour3d-side">
+          <h3 class="side-title">ROOMS &amp; FLOORPLAN（41F 空間モデル）</h3>
+          <div class="room-list" id="roomList">
+            <button class="room-btn active" data-room="living" type="button">
+              <img src="assets/pano_living.jpg" alt="リビング・ダイニング" />
+              <span><span class="room-btn-name">01. リビング・ダイニング</span><span class="room-btn-sub">41F 東向きワイド眺望</span></span>
+            </button>
+            <button class="room-btn" data-room="kitchen" type="button">
+              <img src="assets/pano_kitchen.jpg" alt="アイランドキッチン" />
+              <span><span class="room-btn-name">02. アイランドキッチン</span><span class="room-btn-sub">天然石カウンター・食洗機</span></span>
+            </button>
+            <button class="room-btn" data-room="bedroom" type="button">
+              <img src="assets/pano_bedroom.jpg" alt="マスターベッドルーム" />
+              <span><span class="room-btn-name">03. マスターベッドルーム</span><span class="room-btn-sub">落ち着きのスイート寝室</span></span>
+            </button>
+            <button class="room-btn" data-room="terrace" type="button">
+              <img src="assets/pano_terrace.jpg" alt="41F スカイテラス" />
+              <span><span class="room-btn-name">04. 41F スカイテラス</span><span class="room-btn-sub">地上約150mの開放空間</span></span>
+            </button>
+          </div>
+
+          <div class="fp-box">
+            <div style="font-size:11px; color:var(--ink-muted); margin-bottom:6px; display:flex; justify-content:space-between;">
+              <span>連動間取り図（タップで移動）</span>
+              <span style="color:var(--gold);">↑ 東（東京タワー側）</span>
+            </div>
+            <svg class="fp-svg" viewBox="0 0 240 165" aria-label="41F ペントハウス連動間取り図">
+              <!-- Terrace (East / Top) -->
+              <rect class="fp-zone" data-fp="terrace" x="10" y="8" width="220" height="32" rx="3" />
+              <text class="fp-txt" x="120" y="28">41F スカイテラス</text>
+              <!-- Living & Dining -->
+              <rect class="fp-zone active" data-fp="living" x="10" y="44" width="128" height="110" rx="3" />
+              <text class="fp-txt" x="74" y="96">リビング・ダイニング</text>
+              <!-- Kitchen -->
+              <rect class="fp-zone" data-fp="kitchen" x="142" y="44" width="88" height="52" rx="3" />
+              <text class="fp-txt" x="186" y="74">キッチン</text>
+              <!-- Master Bedroom -->
+              <rect class="fp-zone" data-fp="bedroom" x="142" y="100" width="88" height="54" rx="3" />
+              <text class="fp-txt" x="186" y="131">マスター寝室</text>
+              <!-- Live Camera Position & Radar Cone -->
+              <g id="fpRadar" transform="translate(74, 108) rotate(0)">
+                <path d="M 0 0 L -16 -28 A 32 32 0 0 1 16 -28 Z" fill="rgba(201,165,102,0.34)" />
+                <circle cx="0" cy="0" r="5" fill="#c9a566" stroke="#0a0c10" stroke-width="1.5" />
+              </g>
+            </svg>
+          </div>
+          <a href="viewer3d.html" class="t3-btn" style="text-align:center; display:block; padding:9px;">専用全画面ビューア（別ページ）で開く ↗</a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Verified Property Outline (Ivory Band) -->
+  <section class="band-ivory" id="outline">
+    <div class="container">
+      <span class="sec-kicker">06 &nbsp; PROPERTY OUTLINE</span>
+      <h2 class="sec-title">物件概要（公開情報）</h2>
+
+      <dl class="spec-grid reveal">
+        <div class="spec-row"><dt>物件名称</dt><dd>六本木ヒルズレジデンス B棟</dd></div>
+        <div class="spec-row"><dt>所在地</dt><dd>東京都港区六本木6丁目12-2</dd></div>
+        <div class="spec-row"><dt>事業主</dt><dd>森ビル株式会社</dd></div>
+        <div class="spec-row"><dt>規模・構造</dt><dd>地上43階・地下2階 ／ 最高部高さ 159.18m</dd></div>
+        <div class="spec-row"><dt>総戸数</dt><dd>333戸</dd></div>
+        <div class="spec-row"><dt>竣工年月</dt><dd>2003年4月</dd></div>
+        <div class="spec-row"><dt>専有面積・間取り</dt><dd>31.86㎡〜171.6㎡（1R〜4LDK）</dd></div>
+        <div class="spec-row"><dt>3D都市モデル出典</dt><dd>国土交通省 Project PLATEAU 2025（東京都港区・CC BY 4.0）</dd></div>
+      </dl>
+
+      <div class="spec-disclaimer reveal">
+        <strong>ご注意事項（デモンストレーション表記）</strong><br />
+        本Webページおよび掲載映像は、公開されている物件基本情報および国土交通省の公式オープンデータ（Project PLATEAU）を活用して制作した技術デモンストレーションです。室内の3D空間（家具・仕上げ・レイアウト）は、公開最大クラス住戸および41階東向き眺望をもとにオリジナルで構築したCGイメージモデルであり、実在住戸の公式写真・公式図面ではありません。実案件では、お客様ご提供の図面・BIM/CADデータ・3Dスキャンデータへ差し替えて制作いたします。
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. B2B Real Estate Proposal & Inquiry -->
+  <section class="band-dark" id="contact">
+    <div class="container">
+      <div class="inquiry-grid">
+        <div class="reveal">
+          <span class="sec-kicker">07 &nbsp; FOR REAL ESTATE COMPANIES</span>
+          <h2 class="sec-title">貴社の高額物件でも、<br />1物件から試作・導入できます。</h2>
+          <p style="color:var(--ink-muted); font-size:14.5px; line-height:1.95;">
+            新築レジデンスの青田売り、再販・リノベーション前の先行募集、海外投資家向けオンライン商談まで。図面と住所があれば、実寸の街並み映像・物件紹介HP・3Dデジタル内覧をワンストップで制作します。
+          </p>
+          <div class="b2b-cards">
+            <div class="b2b-card">
+              <h4>① 60fps リアルタイム3D 物件紹介映像</h4>
+              <p>PLATEAU実寸街並み＋Unreal Engine 5.5による高品位プロモーション映像（YouTube・SNS・商談用）。</p>
+            </div>
+            <div class="b2b-card">
+              <h4>② 動画主役の特設物件紹介HP（本ページ構成）</h4>
+              <p>スマホ・PC双方で即再生できる高級レジデンス専用LP。多言語対応・問い合わせフォーム連携も可能。</p>
+            </div>
+            <div class="b2b-card">
+              <h4>③ 商談用ブラウザ3Dデジタル内覧ツール</h4>
+              <p>階数別の眺望確認や360°室内ウォークスルーを、専用アプリ不要のブラウザだけで実演可能。</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="form-box reveal" id="demoInquiryForm">
+          <div style="font-family:var(--serif); font-size:20px; margin-bottom:20px; letter-spacing:0.06em;">
+            デモ試作・オンライン説明のご相談
+          </div>
+          <div class="form-row">
+            <label for="fCompany">貴社名</label>
+            <input id="fCompany" type="text" placeholder="例：〇〇不動産株式会社" required />
+          </div>
+          <div class="form-row">
+            <label for="fName">ご担当者様お名前</label>
+            <input id="fName" type="text" placeholder="例：山田 太郎" required />
+          </div>
+          <div class="form-row">
+            <label for="fEmail">メールアドレス</label>
+            <input id="fEmail" type="email" placeholder="example@company.co.jp" required />
+          </div>
+          <div class="form-row">
+            <label for="fType">ご興味のある内容</label>
+            <select id="fType">
+              <option>物件紹介3D動画＋特設HPの1物件試作（PoC）</option>
+              <option>建築前・改装前の3D眺望シミュレーション</option>
+              <option>3Dデジタル内覧デモのオンライン説明（15分）</option>
+              <option>概算費用・納期の資料請求</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="fMsg">対象物件エリア・ご要望（任意）</label>
+            <textarea id="fMsg" rows="3" placeholder="例：港区・渋谷区の新築レジデンス1棟で試作を検討しています"></textarea>
+          </div>
+          <button class="btn-gold" type="submit" style="width:100%; justify-content:center; padding:14px;">
+            相談内容を送信する（デモ画面）
+          </button>
+          <p class="form-note">※本フォームはWebデモ用の動作確認UIです（外部サーバーへの実送信は行いません）。</p>
+          <div class="form-toast" id="formToast">
+            デモ画面での入力を確認しました。実運用時は貴社のCRM・フォーム・通知先メールへ連携して即時受付できます。
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand">六本木ヒルズレジデンス B棟 ｜ 3D物件紹介デモ</div>
+          <div>映像制作・Webデモ制作：<strong>つむぎや株式会社</strong></div>
+        </div>
+        <div style="display:flex; gap:18px; flex-wrap:wrap;">
+          <a href="#top">TOP</a>
+          <a href="#movie">MOVIE</a>
+          <a href="#penthouse">41F MODEL</a>
+          <a href="#gallery">GALLERY</a>
+          <a href="#outline">OUTLINE</a>
+          <a href="viewer3d.html">3D内覧デモ</a>
+        </div>
+      </div>
+      <div class="footer-credits">
+        <span>3D都市モデル出典：国土交通省 Project PLATEAU 2025（東京都港区・CC BY 4.0）</span>
+        <span>BGM：Kevin MacLeod "Gymnopédie No. 1"（CC BY 4.0）</span>
+        <span>© つむぎや株式会社</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Full-Screen Cinema Video Modal -->
+  <div class="modal-backdrop" id="theaterModal" role="dialog" aria-modal="true" aria-label="本編映像シアター">
+    <div class="modal-box">
+      <button class="modal-close" id="closeTheaterBtn" type="button" aria-label="閉じる">×</button>
+      <video id="modalVideo" controls playsinline preload="metadata" poster="assets/hero_poster.jpg">
+        <source src="media/roppongi_ue5_60fps_web.mp4" type="video/mp4" />
+      </video>
+      <div class="modal-caption">
+        <span>六本木ヒルズレジデンス B棟 — UE 5.5 × PLATEAU 2025 リアルタイム3D本編（40秒・60fps・ピアノBGM）</span>
+        <span>映像制作：つむぎや株式会社</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full-Screen Gallery Lightbox -->
+  <div class="modal-backdrop" id="lightboxModal" role="dialog" aria-modal="true" aria-label="ギャラリー拡大表示">
+    <div class="modal-box">
+      <button class="modal-close" id="closeLightboxBtn" type="button" aria-label="閉じる">×</button>
+      <img id="lightboxImg" src="" alt="" />
+      <div class="modal-caption">
+        <span id="lightboxCap"></span>
+        <div class="lb-nav">
+          <button class="btn-ghost" id="lbPrev" type="button">← 前へ</button>
+          <button class="btn-ghost" id="lbNext" type="button">次へ →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const header = document.getElementById("siteHeader");
+      const heroVideo = document.getElementById("heroVideo");
+      const heroMuteBtn = document.getElementById("heroMuteBtn");
+      const mainMovie = document.getElementById("mainMovie");
+      const modalVideo = document.getElementById("modalVideo");
+      const theaterModal = document.getElementById("theaterModal");
+      const currentChapterText = document.getElementById("currentChapterText");
+
+      // Sticky header
+      const onScroll = () => {
+        if (window.scrollY > 36) header.classList.add("scrolled");
+        else header.classList.remove("scrolled");
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+
+      // Scroll reveal
+      const reveals = document.querySelectorAll(".reveal");
+      if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("visible");
+              io.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.12 });
+        reveals.forEach((el) => io.observe(el));
+      } else {
+        reveals.forEach((el) => el.classList.add("visible"));
+      }
+
+      // Keep hero background video on clean scenic/3D segments (skip opening centered title card & closing endcard)
+      heroVideo.addEventListener("loadedmetadata", () => {
+        if (heroVideo.currentTime < 6.2) heroVideo.currentTime = 6.2;
+      });
+      heroVideo.addEventListener("timeupdate", () => {
+        if (heroVideo.currentTime >= 34.2) heroVideo.currentTime = 6.2;
+      });
+
+      // Hero background mute toggle
+      heroMuteBtn.addEventListener("click", () => {
+        heroVideo.muted = !heroVideo.muted;
+        heroMuteBtn.textContent = heroVideo.muted ? "BGM: OFF" : "BGM: ON";
+        if (!heroVideo.muted) heroVideo.play().catch(() => {});
+      });
+
+      // Hero chapter pills -> jump hero video & keep active highlight
+      const heroPills = document.querySelectorAll("#heroChapters .chapter-pill");
+      heroPills.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const ts = parseFloat(btn.dataset.time || "0");
+          heroPills.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          heroVideo.currentTime = ts;
+          heroVideo.play().catch(() => {});
+        });
+      });
+
+      // Main movie chapter cards
+      const tcCards = document.querySelectorAll("#theaterChapters .tc-card");
+      function jumpMainMovie(ts, label) {
+        mainMovie.currentTime = ts;
+        mainMovie.play().catch(() => {});
+        if (label) currentChapterText.textContent = label;
+        tcCards.forEach((c) => {
+          c.classList.toggle("active", Math.abs(parseFloat(c.dataset.time) - ts) < 0.5);
+        });
+      }
+      tcCards.forEach((card) => {
+        card.addEventListener("click", () => {
+          jumpMainMovie(parseFloat(card.dataset.time || "0"), card.dataset.label || "");
+        });
+      });
+
+      // Update active chapter card as mainMovie plays
+      const chapterBounds = [
+        { t: 0, idx: 0, label: "チャプター 01：港区3Dゴールデンアワー空撮" },
+        { t: 5.5, idx: 1, label: "チャプター 02：都心スカイライン・立地紹介" },
+        { t: 10.8, idx: 2, label: "チャプター 03：41Fリビング空間（CGモデル）" },
+        { t: 16.0, idx: 3, label: "チャプター 04：41F窓越しの東京タワー眺望" },
+        { t: 21.2, idx: 4, label: "チャプター 05：ショーキッチン＆窓際ダイニング" },
+        { t: 26.5, idx: 5, label: "チャプター 06：41Fスカイテラス＆パノラマフィナーレ" }
+      ];
+      mainMovie.addEventListener("timeupdate", () => {
+        const cur = mainMovie.currentTime;
+        let found = chapterBounds[0];
+        for (const cb of chapterBounds) {
+          if (cur >= cb.t) found = cb;
+        }
+        currentChapterText.textContent = found.label;
+        tcCards.forEach((c, i) => c.classList.toggle("active", i === found.idx));
+      });
+
+      document.getElementById("toggleMainPlay").addEventListener("click", () => {
+        if (mainMovie.paused) mainMovie.play().catch(() => {});
+        else mainMovie.pause();
+      });
+
+      // Space section "jump to video" buttons
+      document.querySelectorAll("[data-jump-movie]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const ts = parseFloat(btn.dataset.jumpMovie || "0");
+          document.getElementById("movie").scrollIntoView({ behavior: "smooth" });
+          setTimeout(() => jumpMainMovie(ts), 450);
+        });
+      });
+
+      // Full-screen Cinema Modal
+      function openTheater(startTime) {
+        heroVideo.muted = true;
+        heroMuteBtn.textContent = "BGM: OFF";
+        mainMovie.pause();
+        theaterModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+        modalVideo.currentTime = typeof startTime === "number" ? startTime : 0;
+        modalVideo.muted = false;
+        modalVideo.play().catch(() => {});
+      }
+      function closeTheater() {
+        modalVideo.pause();
+        theaterModal.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+      document.getElementById("openTheaterBtn").addEventListener("click", () => openTheater(0));
+      document.getElementById("openTheaterFromSec").addEventListener("click", () => openTheater(mainMovie.currentTime || 0));
+      document.getElementById("closeTheaterBtn").addEventListener("click", closeTheater);
+      theaterModal.addEventListener("click", (e) => { if (e.target === theaterModal) closeTheater(); });
+
+      // Gallery Lightbox
+      const lbItems = [
+        { src: "assets/scene_02_living_reveal.jpg", cap: "41F ペントハウス・リビング全景（天井高3.5m・カラカッタ大理石・真鍮リングシャンデリア）" },
+        { src: "assets/scene_03_living_tokyo_tower.jpg", cap: "41F リビング窓越しに正面へ広がる麻布台ヒルズ・東京タワー（実寸3D眺望）" },
+        { src: "assets/scene_04_kitchen_dining.jpg", cap: "ネロマルキーナ黒大理石のアイランドキッチン＆ウォールナットダイニング" },
+        { src: "assets/scene_06_sky_terrace.jpg", cap: "41F スカイテラス・ガラス手すり越しに望む東京タワーと麻布台ヒルズ" },
+        { src: "assets/hero_poster.jpg", cap: "港区3D広域空撮（国土交通省 PLATEAU 2025 × Unreal Engine 5.5）" },
+        { src: "assets/scene_01_aerial.jpg", cap: "都心スカイライン低空グライド（麻布台ヒルズ・東京タワー）" },
+        { src: "assets/scene_05_dining_skyline.jpg", cap: "窓際ウォールナットダイニングと港区高層スカイライン" }
+      ];
+      let lbIdx = 0;
+      const lbModal = document.getElementById("lightboxModal");
+      const lbImg = document.getElementById("lightboxImg");
+      const lbCap = document.getElementById("lightboxCap");
+      function showLb(idx) {
+        lbIdx = (idx + lbItems.length) % lbItems.length;
+        lbImg.src = lbItems[lbIdx].src;
+        lbImg.alt = lbItems[lbIdx].cap;
+        lbCap.textContent = lbItems[lbIdx].cap;
+        lbModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+      }
+      function closeLb() {
+        lbModal.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+      document.querySelectorAll("[data-lightbox]").forEach((el) => {
+        el.addEventListener("click", () => showLb(parseInt(el.dataset.lightbox, 10) || 0));
+      });
+      document.getElementById("closeLightboxBtn").addEventListener("click", closeLb);
+      document.getElementById("lbPrev").addEventListener("click", () => showLb(lbIdx - 1));
+      document.getElementById("lbNext").addEventListener("click", () => showLb(lbIdx + 1));
+      lbModal.addEventListener("click", (e) => { if (e.target === lbModal) closeLb(); });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { closeTheater(); closeLb(); }
+        if (lbModal.classList.contains("open")) {
+          if (e.key === "ArrowLeft") showLb(lbIdx - 1);
+          if (e.key === "ArrowRight") showLb(lbIdx + 1);
+        }
+      });
+
+      // Demo inquiry form
+      const form = document.getElementById("demoInquiryForm");
+      const toast = document.getElementById("formToast");
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        toast.classList.add("show");
+      });
+
+      // =====================================================================
+      // EMBEDDED 3D DIGITAL VIEWING (Three.js 360° Walkthrough + CesiumJS PLATEAU 2025)
+      // =====================================================================
+      const ROOMS_3D = {
+        living: {
+          name: "41F リビング・ダイニング",
+          img: "assets/pano_living.jpg",
+          fp: [74, 108],
+          hotspots: [
+            { target: "kitchen", label: "キッチンへ移動", yaw: 72, pitch: -12 },
+            { target: "terrace", label: "41F スカイテラスへ", yaw: -10, pitch: -14 },
+            { target: "bedroom", label: "マスター寝室へ", yaw: 138, pitch: -12 }
+          ]
+        },
+        kitchen: {
+          name: "アイランドキッチン",
+          img: "assets/pano_kitchen.jpg",
+          fp: [186, 70],
+          hotspots: [
+            { target: "living", label: "リビングへ戻る", yaw: -92, pitch: -13 },
+            { target: "bedroom", label: "マスター寝室へ", yaw: 118, pitch: -13 }
+          ]
+        },
+        bedroom: {
+          name: "マスターベッドルーム",
+          img: "assets/pano_bedroom.jpg",
+          fp: [186, 128],
+          hotspots: [
+            { target: "living", label: "リビングへ戻る", yaw: -112, pitch: -13 },
+            { target: "terrace", label: "41F スカイテラスへ", yaw: 26, pitch: -12 }
+          ]
+        },
+        terrace: {
+          name: "41F スカイテラス",
+          img: "assets/pano_terrace.jpg",
+          fp: [120, 24],
+          hotspots: [
+            { target: "living", label: "リビングへ戻る", yaw: 174, pitch: -14 },
+            { target: "bedroom", label: "マスター寝室へ", yaw: 126, pitch: -12 }
+          ]
+        }
+      };
+
+      let tourMode = "indoor"; // "indoor" | "city"
+      let curRoom = "living";
+      let pYaw = 0, pPitch = -2, pFov = 72;
+      let pTargetYaw = 0, pTargetPitch = -2, pTargetFov = 72;
+      let pAutoRot = true, pDragging = false, pLastX = 0, pLastY = 0;
+      let pRenderer = null, pScene = null, pCam = null, pMesh = null;
+      const pTexCache = {};
+
+      const panoStage = document.getElementById("panoStage");
+      const cityStage = document.getElementById("cityStage");
+      const panoHotspots = document.getElementById("panoHotspots");
+      const tour3dStatus = document.getElementById("tour3dStatus");
+      const fpRadar = document.getElementById("fpRadar");
+
+      function initIndoor3D() {
+        if (!window.THREE || pRenderer) return;
+        const w = panoStage.clientWidth || 860;
+        const h = panoStage.clientHeight || 580;
+        pScene = new THREE.Scene();
+        pCam = new THREE.PerspectiveCamera(pFov, w / h, 0.1, 100);
+        pRenderer = new THREE.WebGLRenderer({ antialias: true });
+        pRenderer.setSize(w, h);
+        pRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        pRenderer.outputEncoding = THREE.sRGBEncoding;
+        panoStage.appendChild(pRenderer.domElement);
+
+        const geo = new THREE.SphereGeometry(40, 64, 48);
+        geo.scale(-1, 1, 1);
+        pMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        pScene.add(pMesh);
+
+        const loader = new THREE.TextureLoader();
+        const maxAniso = pRenderer.capabilities.getMaxAnisotropy();
+        Object.entries(ROOMS_3D).forEach(([k, info]) => {
+          loader.load(info.img, (tex) => {
+            tex.encoding = THREE.sRGBEncoding;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+            tex.anisotropy = maxAniso;
+            pTexCache[k] = tex;
+            if (k === curRoom) {
+              pMesh.material.map = tex;
+              pMesh.material.needsUpdate = true;
+            }
+          });
+        });
+
+        panoStage.addEventListener("pointerdown", (e) => {
+          pDragging = true;
+          pLastX = e.clientX;
+          pLastY = e.clientY;
+          panoStage.setPointerCapture && panoStage.setPointerCapture(e.pointerId);
+        });
+        window.addEventListener("pointermove", (e) => {
+          if (!pDragging || tourMode !== "indoor") return;
+          const dx = e.clientX - pLastX;
+          const dy = e.clientY - pLastY;
+          pLastX = e.clientX;
+          pLastY = e.clientY;
+          if (Math.abs(dx) + Math.abs(dy) > 2) {
+            pAutoRot = false;
+            document.getElementById("btnAutoRotate").classList.remove("active");
+          }
+          pTargetYaw -= dx * 0.22;
+          pTargetPitch = Math.max(-52, Math.min(52, pTargetPitch + dy * 0.18));
+        });
+        window.addEventListener("pointerup", () => { pDragging = false; });
+
+        panoStage.addEventListener("wheel", (e) => {
+          if (tourMode !== "indoor") return;
+          e.preventDefault();
+          pTargetFov = Math.max(40, Math.min(90, pTargetFov + e.deltaY * 0.04));
+        }, { passive: false });
+
+        window.addEventListener("resize", () => {
+          if (!pRenderer) return;
+          const nw = panoStage.clientWidth || 860;
+          const nh = panoStage.clientHeight || 580;
+          pCam.aspect = nw / nh;
+          pCam.updateProjectionMatrix();
+          pRenderer.setSize(nw, nh);
+        });
+
+        renderHotspots("living");
+        requestAnimationFrame(animate3D);
+      }
+
+      function renderHotspots(roomKey) {
+        panoHotspots.innerHTML = "";
+        const info = ROOMS_3D[roomKey];
+        if (!info) return;
+        info.hotspots.forEach((h) => {
+          const pin = document.createElement("div");
+          pin.className = "hs-pin";
+          pin.dataset.yaw = h.yaw;
+          pin.dataset.pitch = h.pitch;
+          pin.innerHTML = `<div class="hs-ring">➜</div><div class="hs-label">${h.label}</div>`;
+          pin.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            switchRoom(h.target);
+          });
+          panoHotspots.appendChild(pin);
+        });
+      }
+
+      function switchRoom(roomKey) {
+        if (!ROOMS_3D[roomKey]) return;
+        curRoom = roomKey;
+        const info = ROOMS_3D[roomKey];
+        // Subtle Matterport-style zoom pulse transition
+        pTargetFov = 58;
+        setTimeout(() => { pTargetFov = 72; }, 220);
+        if (pMesh && pTexCache[roomKey]) {
+          pMesh.material.map = pTexCache[roomKey];
+          pMesh.material.needsUpdate = true;
+        }
+        pTargetYaw = 0;
+        pTargetPitch = -2;
+        tour3dStatus.textContent = `${info.name} — ドラッグで見回し・ピンをクリックで移動`;
+        renderHotspots(roomKey);
+        document.querySelectorAll("#roomList .room-btn").forEach((b) => {
+          b.classList.toggle("active", b.dataset.room === roomKey);
+        });
+        document.querySelectorAll(".fp-zone").forEach((z) => {
+          z.classList.toggle("active", z.dataset.fp === roomKey);
+        });
+        if (tourMode !== "indoor") setTourMode("indoor");
+      }
+
+      function updateHotspots3D() {
+        if (!pCam || tourMode !== "indoor") return;
+        const w = panoStage.clientWidth || 860;
+        const h = panoStage.clientHeight || 580;
+        panoHotspots.querySelectorAll(".hs-pin").forEach((el) => {
+          const yRad = THREE.MathUtils.degToRad(Number(el.dataset.yaw));
+          const pRad = THREE.MathUtils.degToRad(Number(el.dataset.pitch));
+          const v = new THREE.Vector3(
+            Math.cos(pRad) * Math.sin(yRad),
+            Math.sin(pRad),
+            -Math.cos(pRad) * Math.cos(yRad)
+          ).multiplyScalar(20);
+          v.project(pCam);
+          if (v.z > 1) {
+            el.style.opacity = "0";
+            el.style.pointerEvents = "none";
+          } else {
+            const x = (v.x * 0.5 + 0.5) * w;
+            const y = (-v.y * 0.5 + 0.5) * h;
+            const visible = x > 30 && x < w - 30 && y > 60 && y < h - 70;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.opacity = visible ? "1" : "0";
+            el.style.pointerEvents = visible ? "auto" : "none";
+          }
+        });
+      }
+
+      function animate3D() {
+        requestAnimationFrame(animate3D);
+        if (tourMode === "indoor" && pRenderer && pCam) {
+          if (pAutoRot && !pDragging) pTargetYaw += 0.06;
+          pYaw += (pTargetYaw - pYaw) * 0.12;
+          pPitch += (pTargetPitch - pPitch) * 0.12;
+          pFov += (pTargetFov - pFov) * 0.12;
+          pCam.fov = pFov;
+          pCam.updateProjectionMatrix();
+          const phi = THREE.MathUtils.degToRad(90 - pPitch);
+          const theta = THREE.MathUtils.degToRad(pYaw);
+          pCam.lookAt(
+            Math.sin(phi) * Math.sin(theta),
+            Math.cos(phi),
+            -Math.sin(phi) * Math.cos(theta)
+          );
+          pRenderer.render(pScene, pCam);
+          updateHotspots3D();
+          const fp = ROOMS_3D[curRoom].fp;
+          fpRadar.setAttribute("transform", `translate(${fp[0]}, ${fp[1]}) rotate(${pYaw.toFixed(1)})`);
+        } else if (tourMode === "city" && cesiumViewer) {
+          cState.heading += (cState.tHeading - cState.heading) * 0.12;
+          cState.pitch += (cState.tPitch - cState.pitch) * 0.12;
+          cState.range += (cState.tRange - cState.range) * 0.12;
+          cState.floorH += (cState.tFloorH - cState.floorH) * 0.12;
+          applyCityCam();
+        }
+      }
+
+      // Room & Floorplan bindings
+      document.querySelectorAll("#roomList .room-btn").forEach((btn) => {
+        btn.addEventListener("click", () => switchRoom(btn.dataset.room));
+      });
+      document.querySelectorAll(".fp-zone").forEach((z) => {
+        z.addEventListener("click", () => switchRoom(z.dataset.fp));
+      });
+      document.getElementById("btnPanLeft").addEventListener("click", () => { pAutoRot = false; document.getElementById("btnAutoRotate").classList.remove("active"); pTargetYaw -= 35; });
+      document.getElementById("btnPanRight").addEventListener("click", () => { pAutoRot = false; document.getElementById("btnAutoRotate").classList.remove("active"); pTargetYaw += 35; });
+      document.getElementById("btnZoomIn").addEventListener("click", () => { pTargetFov = Math.max(40, pTargetFov - 10); });
+      document.getElementById("btnZoomOut").addEventListener("click", () => { pTargetFov = Math.min(90, pTargetFov + 10); });
+      document.getElementById("btnAutoRotate").addEventListener("click", (e) => {
+        pAutoRot = !pAutoRot;
+        e.currentTarget.classList.toggle("active", pAutoRot);
+      });
+      document.getElementById("btnTourFs").addEventListener("click", () => {
+        const wrap = document.getElementById("tour3dStageWrap");
+        if (!document.fullscreenElement) wrap.requestFullscreen && wrap.requestFullscreen();
+        else document.exitFullscreen && document.exitFullscreen();
+      });
+
+      // Lazy-loaded CesiumJS + PLATEAU 2025 Minato-ku LOD2 3D City Viewer
+      let cesiumLoaded = false, cesiumViewer = null;
+      const TARGET_LON = 139.729267, TARGET_LAT = 35.658868;
+      const cState = { mode: "overview", heading: 58, pitch: -22, range: 520, floorH: 148, tHeading: 58, tPitch: -22, tRange: 520, tFloorH: 148 };
+      let cDrag = false, cLX = 0, cLY = 0;
+
+      function applyCityCam() {
+        if (!cesiumViewer || !window.Cesium) return;
+        const hR = Cesium.Math.toRadians(cState.heading);
+        const pR = Cesium.Math.toRadians(cState.pitch);
+        if (cState.mode === "overview") {
+          cesiumViewer.camera.lookAt(
+            Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 85),
+            new Cesium.HeadingPitchRange(hR, pR, cState.range)
+          );
+        } else {
+          cesiumViewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+          cesiumViewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(TARGET_LON + 0.00032, TARGET_LAT, cState.floorH),
+            orientation: { heading: hR, pitch: pR, roll: 0 }
+          });
+        }
+      }
+
+      function initCity3D() {
+        if (cesiumLoaded) return;
+        cesiumLoaded = true;
+        tour3dStatus.textContent = "国土交通省 PLATEAU 2025（東京都港区 LOD2）を読み込み中...";
+        const sc = document.createElement("script");
+        sc.src = "https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js";
+        sc.onload = async () => {
+          Cesium.Ion.defaultAccessToken = "";
+          cesiumViewer = new Cesium.Viewer("cityStage", {
+            imageryProvider: false,
+            baseLayerPicker: false, geocoder: false, homeButton: false,
+            infoBox: false, navigationHelpButton: false, sceneModePicker: false,
+            selectionIndicator: false, timeline: false, animation: false,
+            fullscreenButton: false, shadows: false
+          });
+          cesiumViewer.imageryLayers.removeAll();
+          cesiumViewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+            url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+            maximumLevel: 18
+          }));
+          const ssc = cesiumViewer.scene.screenSpaceCameraController;
+          ssc.enableRotate = ssc.enableTranslate = ssc.enableTilt = ssc.enableLook = ssc.enableZoom = false;
+
+          cesiumViewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 184),
+            point: { pixelSize: 9, color: Cesium.Color.fromCssColorString("#f5df96"), outlineColor: Cesium.Color.BLACK, outlineWidth: 2 },
+            label: {
+              text: "六本木ヒルズレジデンス B棟（43F / 159.18m）",
+              font: "700 12px 'Yu Gothic UI', sans-serif",
+              fillColor: Cesium.Color.fromCssColorString("#f5df96"),
+              showBackground: true,
+              backgroundColor: Cesium.Color.fromCssColorString("rgba(10,14,22,0.88)"),
+              backgroundPadding: new Cesium.Cartesian2(10, 6),
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset: new Cesium.Cartesian2(0, -12),
+              disableDepthTestDistance: Number.POSITIVE_INFINITY
+            }
+          });
+
+          try {
+            const ts = await Cesium.Cesium3DTileset.fromUrl(
+              "https://assets.cms.plateau.reearth.io/assets/b5/b5f79e-0c6c-4fc7-adde-6522014243a2/13103_minato-ku_pref_2025_citygml_1_op_bldg_3dtiles_13103_minato-ku_lod2/tileset.json",
+              { maximumScreenSpaceError: 4 }
+            );
+            const carto = Cesium.Cartographic.fromCartesian(ts.boundingSphere.center);
+            const surface = Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, 0.0);
+            const offset = Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, -58.0);
+            ts.modelMatrix = Cesium.Matrix4.fromTranslation(Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3()));
+            cesiumViewer.scene.primitives.add(ts);
+            tour3dStatus.textContent = "PLATEAU 2025 港区実寸3D — ドラッグで回転・下ボタンで階数別眺望へ切替";
+          } catch (err) {
+            tour3dStatus.textContent = "PLATEAU 3D街並み（国土地理院航空写真表示中）";
+          }
+
+          cityStage.addEventListener("pointerdown", (e) => { cDrag = true; cLX = e.clientX; cLY = e.clientY; });
+          window.addEventListener("pointermove", (e) => {
+            if (!cDrag || tourMode !== "city") return;
+            const dx = e.clientX - cLX, dy = e.clientY - cLY;
+            cLX = e.clientX; cLY = e.clientY;
+            cState.tHeading -= dx * 0.25;
+            cState.tPitch = cState.mode === "overview"
+              ? Math.max(-72, Math.min(-6, cState.tPitch - dy * 0.2))
+              : Math.max(-35, Math.min(30, cState.tPitch + dy * 0.18));
+          });
+          window.addEventListener("pointerup", () => { cDrag = false; });
+          cityStage.addEventListener("wheel", (e) => {
+            if (tourMode !== "city") return;
+            e.preventDefault();
+            if (cState.mode === "overview") cState.tRange = Math.max(180, Math.min(1600, cState.tRange * (1 + e.deltaY * 0.001)));
+          }, { passive: false });
+          applyCityCam();
+        };
+        document.head.appendChild(sc);
+      }
+
+      function setTourMode(mode) {
+        tourMode = mode;
+        const isIndoor = mode === "indoor";
+        document.getElementById("tabIndoor3d").classList.toggle("active", isIndoor);
+        document.getElementById("tabCity3d").classList.toggle("active", !isIndoor);
+        panoStage.classList.toggle("hidden", !isIndoor);
+        panoHotspots.style.display = isIndoor ? "block" : "none";
+        cityStage.classList.toggle("hidden", isIndoor);
+        document.getElementById("controlsIndoor").style.display = isIndoor ? "flex" : "none";
+        document.getElementById("controlsCity").style.display = isIndoor ? "none" : "flex";
+        if (isIndoor) {
+          tour3dStatus.textContent = `${ROOMS_3D[curRoom].name} — ドラッグで見回し・ピンをクリックで移動`;
+        } else {
+          initCity3D();
+        }
+      }
+      document.getElementById("tabIndoor3d").addEventListener("click", () => setTourMode("indoor"));
+      document.getElementById("tabCity3d").addEventListener("click", () => setTourMode("city"));
+
+      document.querySelectorAll("#controlsCity [data-city-cam]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#controlsCity [data-city-cam]").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const k = btn.dataset.cityCam;
+          if (k === "overview") {
+            cState.mode = "overview"; cState.tHeading = 58; cState.tPitch = -22; cState.tRange = 520;
+          } else {
+            cState.mode = "floor"; cState.tHeading = 91;
+            cState.tPitch = k === "f15" ? -2 : k === "f28" ? -5 : -7;
+            cState.tFloorH = k === "f15" ? 55 : k === "f28" ? 102 : 148;
+          }
+        });
+      });
+      document.querySelectorAll("#controlsCity [data-city-time]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#controlsCity [data-city-time]").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          if (!cesiumViewer || !window.Cesium) return;
+          const h = Number(btn.dataset.cityTime);
+          cesiumViewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(Date.UTC(2026, 4, 20, (h - 9 + 24) % 24, 0, 0)));
+          cesiumViewer.scene.globe.enableLighting = h >= 17;
+        });
+      });
+
+      initIndoor3D();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>六本木ヒルズレジデンス B棟 | PLATEAU 2025 3D街並み × 360°デジタル内覧デモ</title>
+
+  <!-- CesiumJS (Token-free with MLIT PLATEAU 2025 LOD2 & GSI Tiles) -->
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+
+  <!-- Three.js for buttery-smooth 360° photorealistic panorama walkthrough -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #080b10;
+      --glass: rgba(12, 16, 24, 0.78);
+      --glass-strong: rgba(12, 16, 24, 0.90);
+      --border: rgba(216, 179, 76, 0.34);
+      --gold: #d8b34c;
+      --gold-hi: #f5df96;
+      --text: #f4f6f9;
+      --muted: #9aa7bc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--text);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+    }
+
+    /* Fullscreen Viewports */
+    #cesiumContainer, #panoContainer {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      transition: opacity 0.55s ease;
+    }
+    #cesiumContainer { z-index: 1; cursor: grab; }
+    #cesiumContainer:active { cursor: grabbing; }
+    #panoContainer {
+      z-index: 2; opacity: 0; pointer-events: none; background: #000;
+      cursor: grab;
+    }
+    #panoContainer:active { cursor: grabbing; }
+    #panoContainer.active { opacity: 1; pointer-events: auto; }
+
+    /* Fade overlay for smooth Matterport-style room transitions */
+    #transitionFade {
+      position: fixed; inset: 0; z-index: 15; background: #070a10;
+      opacity: 0; pointer-events: none; transition: opacity 0.32s ease;
+    }
+    #transitionFade.show { opacity: 0.72; }
+
+    /* Hide Cesium default UI clutter */
+    .cesium-viewer-toolbar,
+    .cesium-viewer-animationContainer,
+    .cesium-viewer-timelineContainer,
+    .cesium-viewer-fullscreenContainer,
+    .cesium-viewer-bottom { display: none !important; }
+
+    /* Top Minimal Header */
+    .topbar {
+      position: fixed; top: 14px; left: 16px; right: 16px; z-index: 40;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      pointer-events: none;
+    }
+    .topbar > * { pointer-events: auto; }
+
+    .brand-pill {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: blur(14px); border-radius: 999px;
+      padding: 8px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .badge {
+      background: linear-gradient(135deg, var(--gold-hi), var(--gold));
+      color: #090c12; font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+      padding: 3px 8px; border-radius: 999px;
+    }
+    .brand-name { font-size: 14px; font-weight: 700; letter-spacing: 0.03em; }
+    .brand-meta { font-size: 11px; color: var(--muted); }
+
+    .center-tabs {
+      display: flex; gap: 6px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: blur(14px); border-radius: 999px; padding: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .tab-btn {
+      border: none; background: transparent; color: var(--muted);
+      padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--gold-hi), var(--gold));
+      color: #090c12; box-shadow: 0 2px 12px rgba(216,179,76,0.4);
+    }
+
+    .tour-btn {
+      border: 1px solid var(--gold); background: var(--glass-strong); color: var(--gold-hi);
+      padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+      cursor: pointer; backdrop-filter: blur(12px); transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .tour-btn:hover { background: var(--gold); color: #090c12; }
+    .tour-btn.playing { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+    /* Compact Spec Popover (Top Left, collapsible) */
+    .spec-card-wrap {
+      position: fixed; top: 68px; left: 16px; z-index: 35; width: 270px;
+      background: var(--glass); border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px); border-radius: 14px; padding: 12px 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.42);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .spec-header {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--gold-hi); font-weight: 700; letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+    .spec-body { margin-top: 8px; font-size: 11.5px; line-height: 1.65; color: var(--muted); }
+    .spec-body strong { color: #fff; }
+    .spec-card-wrap.collapsed .spec-body { display: none; }
+
+    /* PLATEAU Building Inspector Popup (only shown when a building is clicked) */
+    #bldgPopup {
+      position: fixed; top: 68px; right: 16px; z-index: 38; width: 260px;
+      background: var(--glass-strong); border: 1px solid var(--border);
+      backdrop-filter: blur(14px); border-radius: 14px; padding: 12px 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    }
+    .popup-row {
+      display: flex; justify-content: space-between; gap: 8px;
+      padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 11.5px;
+    }
+    .popup-row:last-child { border-bottom: none; }
+    .popup-k { color: var(--muted); }
+    .popup-v { color: #fff; font-weight: 600; text-align: right; }
+
+    /* Bottom Floating Dock (Clean, unobstructed 3D!) */
+    .bottom-dock {
+      position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+      z-index: 40; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+      background: var(--glass-strong); border: 1px solid var(--border);
+      backdrop-filter: blur(16px); border-radius: 16px; padding: 8px 12px;
+      box-shadow: 0 14px 36px rgba(0,0,0,0.55); max-width: calc(100vw - 32px);
+    }
+    .dock-sep { width: 1px; height: 26px; background: rgba(255,255,255,0.14); margin: 0 4px; }
+    .dock-btn {
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+      color: var(--text); padding: 8px 13px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: all 0.18s ease;
+    }
+    .dock-btn:hover { background: rgba(216,179,76,0.2); border-color: var(--gold); }
+    .dock-btn.active {
+      background: linear-gradient(135deg, var(--gold-hi), var(--gold));
+      color: #090c12; border-color: transparent; font-weight: 800;
+    }
+    .dock-btn.accent {
+      background: rgba(56, 189, 248, 0.18); border-color: #38bdf8; color: #e0f2fe;
+    }
+    .dock-btn.accent:hover { background: #38bdf8; color: #090c12; }
+
+    /* Bottom-Right Intuitive Nav Pad */
+    .nav-pad {
+      position: fixed; bottom: 26px; right: 16px; z-index: 40;
+      display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+    }
+    .nav-row {
+      display: flex; gap: 5px;
+      background: var(--glass-strong); border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(12px); border-radius: 12px; padding: 5px;
+    }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06);
+      color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .icon-btn:hover { background: var(--gold); color: #090c12; }
+    .icon-btn.active { background: var(--gold); color: #090c12; }
+
+    /* Compact Interactive Floorplan (Interior Mode Only, Bottom-Left) */
+    #miniFloorplan {
+      position: fixed; bottom: 26px; left: 16px; z-index: 40; width: 224px;
+      background: var(--glass-strong); border: 1px solid var(--border);
+      backdrop-filter: blur(14px); border-radius: 14px; padding: 10px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    }
+    .fp-title { font-size: 10px; color: var(--gold-hi); font-weight: 700; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .fp-room {
+      fill: rgba(255,255,255,0.06); stroke: rgba(216,179,76,0.45); stroke-width: 1.4;
+      cursor: pointer; transition: fill 0.18s ease;
+    }
+    .fp-room:hover { fill: rgba(216,179,76,0.22); }
+    .fp-room.active { fill: rgba(216,179,76,0.34); stroke: var(--gold-hi); stroke-width: 2; }
+    .fp-txt { fill: #e2e8f0; font-size: 9px; font-weight: 700; pointer-events: none; text-anchor: middle; }
+
+    /* Matterport-style 3D Hotspot Overlay Markers */
+    #hotspotLayer {
+      position: fixed; inset: 0; z-index: 12; pointer-events: none; overflow: hidden;
+    }
+    .hotspot {
+      position: absolute; transform: translate(-50%, -50%);
+      pointer-events: auto; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .hotspot:hover { transform: translate(-50%, -50%) scale(1.12); }
+    .hotspot-ring {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2.5px solid var(--gold-hi);
+      background: rgba(12, 16, 24, 0.45);
+      box-shadow: 0 0 20px rgba(216, 179, 76, 0.65), inset 0 0 10px rgba(255,255,255,0.35);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gold-hi); font-size: 16px; font-weight: 800;
+      animation: pulseRing 2.2s infinite;
+    }
+    .hotspot-label {
+      background: rgba(10, 14, 22, 0.85); border: 1px solid var(--border);
+      color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+      backdrop-filter: blur(8px);
+    }
+    @keyframes pulseRing {
+      0%, 100% { box-shadow: 0 0 14px rgba(216,179,76,0.55); }
+      50% { box-shadow: 0 0 26px rgba(245,223,150,0.95); }
+    }
+
+    /* Subtle Bottom-most Credit & Status */
+    .credit-line {
+      position: fixed; bottom: 4px; left: 16px; right: 16px; z-index: 35;
+      display: flex; justify-content: space-between; font-size: 10px; color: rgba(200,210,225,0.65);
+      pointer-events: none;
+    }
+
+    /* File protocol warning banner */
+    #fileWarn {
+      position: fixed; top: 68px; left: 50%; transform: translateX(-50%); z-index: 90;
+      background: rgba(185, 28, 28, 0.92); color: #fff; padding: 10px 18px;
+      border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Viewports -->
+  <div id="cesiumContainer"></div>
+  <div id="panoContainer"></div>
+  <div id="hotspotLayer" class="hidden"></div>
+  <div id="transitionFade"></div>
+
+  <!-- File:// warning (shown only if opened directly via file:// without HTTP server) -->
+  <div id="fileWarn" class="hidden">
+    ※ 360°パノラマ画像の読み込みにはローカルHTTP配信が必要です：<code>python -m http.server 8080</code> を実行し <code>http://localhost:8080/</code> で開いてください。
+  </div>
+
+  <!-- Top Minimal Header -->
+  <header class="topbar">
+    <div class="brand-pill">
+      <span class="badge">LIVE DEMO</span>
+      <div>
+        <div class="brand-name">六本木ヒルズレジデンス B棟</div>
+        <div class="brand-meta">国土交通省 PLATEAU 2025 LOD2 × 360°デジタル内覧</div>
+      </div>
+    </div>
+
+    <div class="center-tabs">
+      <button id="tabCity" class="tab-btn active" onclick="setMode('city')">1. 街並み・階数眺望</button>
+      <button id="tabPano" class="tab-btn" onclick="setMode('pano')">2. 360°デジタル内覧</button>
+    </div>
+
+    <button id="btnTour" class="tour-btn" onclick="toggleTour()">🎬 自動ツアー再生</button>
+  </header>
+
+  <!-- Collapsible Property Info Card -->
+  <aside id="specCard" class="spec-card-wrap">
+    <div class="spec-header" onclick="document.getElementById('specCard').classList.toggle('collapsed')">
+      <span>物件公開スペック（森ビル）</span>
+      <span>▾</span>
+    </div>
+    <div class="spec-body">
+      <div>所在地：<strong>東京都港区六本木6-12-2</strong></div>
+      <div>規模：<strong>地上43階・地下2階 / 159.18m</strong></div>
+      <div>総戸数：<strong>333戸</strong>（31.86〜171.6㎡ / 2003年竣工）</div>
+      <div>高層相場：<strong>月額100万〜500万円超クラス</strong></div>
+      <div style="margin-top:6px; font-size:10.5px; color:#cbd5e1;">
+        操作：<strong>左ドラッグで回転・見渡し</strong> / ホイールでズーム
+      </div>
+    </div>
+  </aside>
+
+  <!-- PLATEAU Building Inspector Popup (hidden until user clicks a building) -->
+  <aside id="bldgPopup" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span style="font-size:10.5px; color:var(--gold-hi); font-weight:700;">PLATEAU 2025 建物属性</span>
+      <button onclick="document.getElementById('bldgPopup').classList.add('hidden')"
+        style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px;">✕</button>
+    </div>
+    <div class="popup-row"><span class="popup-k">名称</span><span class="popup-v" id="bName">-</span></div>
+    <div class="popup-row"><span class="popup-k">計測高さ</span><span class="popup-v" id="bHeight">-</span></div>
+    <div class="popup-row"><span class="popup-k">地上階数</span><span class="popup-v" id="bFloors">-</span></div>
+    <div class="popup-row"><span class="popup-k">用途</span><span class="popup-v" id="bUsage">-</span></div>
+  </aside>
+
+  <!-- Bottom Floating Dock: City Mode -->
+  <div id="dockCity" class="bottom-dock">
+    <button class="dock-btn active" data-cam="overview" onclick="selectCityView('overview', this)">街並み俯瞰</button>
+    <button class="dock-btn" data-cam="f15" onclick="selectCityView('f15', this)">15F 眺望 (55m)</button>
+    <button class="dock-btn" data-cam="f28" onclick="selectCityView('f28', this)">28F 眺望 (102m)</button>
+    <button class="dock-btn" data-cam="f41" onclick="selectCityView('f41', this)">41F 眺望 (148m)</button>
+    <div class="dock-sep"></div>
+    <button class="dock-btn" data-time="8" onclick="setCityTime(8, this)">朝</button>
+    <button class="dock-btn active" data-time="13" onclick="setCityTime(13, this)">昼</button>
+    <button class="dock-btn" data-time="17" onclick="setCityTime(17, this)">夕景</button>
+    <button class="dock-btn" data-time="20" onclick="setCityTime(20, this)">夜景</button>
+    <div class="dock-sep"></div>
+    <button class="dock-btn accent" onclick="setMode('pano')">41F 室内を内覧 →</button>
+  </div>
+
+  <!-- Bottom Floating Dock: 360° Interior Mode -->
+  <div id="dockPano" class="bottom-dock hidden">
+    <button class="dock-btn active" data-room="living" onclick="goPanoRoom('living')">リビング・ダイニング</button>
+    <button class="dock-btn" data-room="kitchen" onclick="goPanoRoom('kitchen')">アイランドキッチン</button>
+    <button class="dock-btn" data-room="bedroom" onclick="goPanoRoom('bedroom')">マスターベッドルーム</button>
+    <button class="dock-btn" data-room="terrace" onclick="goPanoRoom('terrace')">41F スカイテラス</button>
+    <div class="dock-sep"></div>
+    <button class="dock-btn accent" onclick="setMode('city')">← 街並み眺望へ戻る</button>
+  </div>
+
+  <!-- Compact Floorplan (Interior Mode Only) -->
+  <aside id="miniFloorplan" class="hidden">
+    <div class="fp-title">間取りマップ（クリックで移動）</div>
+    <svg viewBox="0 0 220 155" width="100%" height="142">
+      <rect id="fp-terrace" class="fp-room" x="8" y="112" width="204" height="34" rx="4" onclick="goPanoRoom('terrace')" />
+      <text class="fp-txt" x="110" y="132">SKY TERRACE（東京タワー方面）</text>
+
+      <rect id="fp-living" class="fp-room active" x="8" y="8" width="122" height="100" rx="4" onclick="goPanoRoom('living')" />
+      <text class="fp-txt" x="69" y="58">LIVING &amp; DINING</text>
+
+      <rect id="fp-kitchen" class="fp-room" x="134" y="8" width="78" height="48" rx="4" onclick="goPanoRoom('kitchen')" />
+      <text class="fp-txt" x="173" y="36">KITCHEN</text>
+
+      <rect id="fp-bedroom" class="fp-room" x="134" y="60" width="78" height="48" rx="4" onclick="goPanoRoom('bedroom')" />
+      <text class="fp-txt" x="173" y="88">MASTER BED</text>
+
+      <!-- Live Radar Cone showing gaze direction -->
+      <g id="fpRadar" transform="translate(69, 68) rotate(0)">
+        <path d="M0,0 L-14,-24 A28,28 0 0,1 14,-24 Z" fill="rgba(245,223,150,0.38)" />
+        <circle cx="0" cy="0" r="4.5" fill="#f5df96" stroke="#080b10" stroke-width="1.5" />
+      </g>
+    </svg>
+  </aside>
+
+  <!-- Intuitive One-Click Navigation Pad (Works in BOTH City & Interior Modes!) -->
+  <div class="nav-pad">
+    <div class="nav-row">
+      <button class="icon-btn" title="左へ回転" onclick="nudgeView(-22, 0)">◀</button>
+      <button class="icon-btn" title="右へ回転" onclick="nudgeView(22, 0)">▶</button>
+      <button class="icon-btn" title="ズームイン" onclick="nudgeZoom(-1)">＋</button>
+      <button class="icon-btn" title="ズームアウト" onclick="nudgeZoom(1)">－</button>
+      <button id="btnAutoSpin" class="icon-btn active" title="自動ゆっくり回転 ON/OFF" onclick="toggleAutoSpin()">⟳</button>
+    </div>
+  </div>
+
+  <!-- Bottom Subtle Credit & Status -->
+  <div class="credit-line">
+    <span id="statusText">国土交通省 PLATEAU 2025（東京都港区 LOD2 フルテクスチャ）読み込み中...</span>
+    <span>データ出典: 国土交通省 Project PLATEAU (CC BY 4.0) / 国土地理院 ｜ つむぎや株式会社</span>
+  </div>
+
+  <script>
+    if (window.location.protocol === "file:") {
+      document.getElementById("fileWarn").classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    let currentMode = "city"; // "city" | "pano"
+    let autoSpin = true;
+    let tourTimer = null;
+
+    // =========================================================================
+    // 1. CESIUMJS + PLATEAU 2025 MINATO-KU LOD2 (ORBIT & PANORAMA CONTROLS)
+    // =========================================================================
+    Cesium.Ion.defaultAccessToken = "";
+
+    const gsiPhoto = new Cesium.UrlTemplateImageryProvider({
+      url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+      credit: "国土地理院",
+      maximumLevel: 18
+    });
+
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      baseLayer: new Cesium.ImageryLayer(gsiPhoto),
+      terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+      baseLayerPicker: false, geocoder: false, homeButton: false,
+      sceneModePicker: false, navigationHelpButton: false,
+      animation: false, timeline: false, fullscreenButton: false,
+      infoBox: false, selectionIndicator: false,
+      shadows: false, msaaSamples: 4
+    });
+
+    viewer.scene.globe.depthTestAgainstTerrain = false;
+    viewer.scene.skyAtmosphere.show = true;
+    viewer.scene.fog.enabled = true;
+    viewer.scene.fog.density = 0.00018;
+    viewer.scene.light = new Cesium.DirectionalLight({
+      direction: Cesium.Cartesian3.normalize(new Cesium.Cartesian3(0.4, 0.7, -0.55), new Cesium.Cartesian3()),
+      color: Cesium.Color.fromCssColorString("#fff8ee"),
+      intensity: 1.35
+    });
+
+    // Disable awkward default Cesium globe drag completely — we replace it with
+    // super intuitive Left-Drag = Orbit/LookAround & Wheel = Smooth Zoom!
+    const ssc = viewer.scene.screenSpaceCameraController;
+    ssc.enableRotate = false;
+    ssc.enableTranslate = false;
+    ssc.enableTilt = false;
+    ssc.enableLook = false;
+    ssc.enableZoom = false;
+
+    // Exact coordinates of Roppongi Hills Residence B (Minato-ku Roppongi 6-12-2)
+    const TARGET_LON = 139.729267;
+    const TARGET_LAT = 35.658868;
+    const targetCenter = Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 85);
+
+    // Subtle Gold Crown Marker & Clean Pill Label floating above Roppongi Hills Residence B roof
+    viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 184),
+      point: {
+        pixelSize: 10,
+        color: Cesium.Color.fromCssColorString("#f5df96"),
+        outlineColor: Cesium.Color.fromCssColorString("#080b10"),
+        outlineWidth: 2
+      },
+      label: {
+        text: "六本木ヒルズレジデンス B棟（43F / 159.18m）",
+        font: "700 13px 'Yu Gothic UI', sans-serif",
+        fillColor: Cesium.Color.fromCssColorString("#f5df96"),
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString("rgba(10, 14, 22, 0.88)"),
+        backgroundPadding: new Cesium.Cartesian2(12, 7),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -14),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    });
+    // Vertical champagne-gold pin from roof (159m) up to label (184m)
+    viewer.entities.add({
+      polyline: {
+        positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+          TARGET_LON, TARGET_LAT, 159,
+          TARGET_LON, TARGET_LAT, 184
+        ]),
+        width: 2.5,
+        material: Cesium.Color.fromCssColorString("#f5df96")
+      }
+    });
+
+    // Helper: Ground-align PLATEAU tileset (compensates ~58m Tokyo geoid + Roppongi elevation)
+    // and apply classy architectural tone so untextured buildings don't blow out to harsh white
+    function styleAndGroundTileset(ts) {
+      const carto = Cesium.Cartographic.fromCartesian(ts.boundingSphere.center);
+      const surface = Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, 0.0);
+      const offset  = Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, -58.0);
+      const translation = Cesium.Cartesian3.subtract(offset, surface, new Cesium.Cartesian3());
+      ts.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
+
+      // Soft architectural warm-slate tint (keeps LOD2 photo textures natural, tames blinding white LOD1)
+      ts.style = new Cesium.Cesium3DTileStyle({
+        color: {
+          conditions: [
+            ["Number(${計測高さ}) >= 140", "color('#e6e2d8', 0.98)"],
+            ["Number(${計測高さ}) >= 60",  "color('#cfd6e0', 0.96)"],
+            ["true",                       "color('#b8c2d0', 0.94)"]
+          ]
+        }
+      });
+    }
+
+    // Load NEWEST 2025 MLIT PLATEAU Minato-ku LOD2 Full-Texture 3D Tiles!
+    const PLATEAU_2025_LOD2 =
+      "https://assets.cms.plateau.reearth.io/assets/b5/b5f79e-0c6c-4fc7-adde-6522014243a2/13103_minato-ku_pref_2025_citygml_1_op_bldg_3dtiles_13103_minato-ku_lod2/tileset.json";
+    const PLATEAU_FALLBACK =
+      "https://plateau.geospatial.jp/main/data/3d-tiles/bldg/13100_tokyo/13103_minato-ku/low_resolution/tileset.json";
+
+    async function loadPlateau() {
+      try {
+        const ts = await Cesium.Cesium3DTileset.fromUrl(PLATEAU_2025_LOD2, {
+          maximumScreenSpaceError: 4
+        });
+        styleAndGroundTileset(ts);
+        viewer.scene.primitives.add(ts);
+        document.getElementById("statusText").textContent =
+          "国土交通省 PLATEAU 2025（東京都港区 LOD2）読み込み完了 — 左ドラッグで回転・上部タブから360°室内内覧へ切替";
+      } catch (e) {
+        console.warn("2025 LOD2 fallback:", e);
+        const ts = await Cesium.Cesium3DTileset.fromUrl(PLATEAU_FALLBACK, { maximumScreenSpaceError: 8 });
+        styleAndGroundTileset(ts);
+        viewer.scene.primitives.add(ts);
+        document.getElementById("statusText").textContent = "PLATEAU 港区 3D都市モデル読み込み完了";
+      }
+    }
+    loadPlateau();
+
+    // Custom Intuitive City Camera Controller (Orbit in overview, Panorama Look in floor views)
+    const cityCam = {
+      mode: "overview", // "overview" | "floor"
+      heading: 58,      // degrees
+      pitch: -22,       // degrees
+      range: 520,       // meters (overview orbit distance)
+      floorHeight: 148,
+      targetHeading: 58,
+      targetPitch: -22,
+      targetRange: 520,
+      targetFloorHeight: 148
+    };
+
+    function applyCityCamera() {
+      const hRad = Cesium.Math.toRadians(cityCam.heading);
+      const pRad = Cesium.Math.toRadians(cityCam.pitch);
+      if (cityCam.mode === "overview") {
+        viewer.camera.lookAt(
+          targetCenter,
+          new Cesium.HeadingPitchRange(hRad, pRad, cityCam.range)
+        );
+      } else {
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+        viewer.camera.setView({
+          destination: Cesium.Cartesian3.fromDegrees(
+            TARGET_LON + 0.00032, TARGET_LAT, cityCam.floorHeight
+          ),
+          orientation: { heading: hRad, pitch: pRad, roll: 0 }
+        });
+      }
+    }
+
+    function selectCityView(key, btnEl) {
+      if (btnEl) {
+        document.querySelectorAll("#dockCity .dock-btn[data-cam]").forEach(b => b.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+      if (key === "overview") {
+        cityCam.mode = "overview";
+        cityCam.targetHeading = 58;
+        cityCam.targetPitch = -22;
+        cityCam.targetRange = 520;
+      } else {
+        cityCam.mode = "floor";
+        cityCam.targetHeading = 91; // Directly facing Tokyo Tower (1.46km East)
+        cityCam.targetPitch = key === "f15" ? -2 : key === "f28" ? -5 : -7;
+        cityCam.targetFloorHeight = key === "f15" ? 55 : key === "f28" ? 102 : 148;
+      }
+    }
+
+    // Smooth Mouse/Touch Drag & Wheel for Cesium
+    let cDrag = false, cLastX = 0, cLastY = 0, cMoved = false;
+    const cEl = document.getElementById("cesiumContainer");
+
+    cEl.addEventListener("pointerdown", (e) => {
+      cDrag = true; cMoved = false; cLastX = e.clientX; cLastY = e.clientY;
+    });
+    window.addEventListener("pointermove", (e) => {
+      if (!cDrag || currentMode !== "city") return;
+      const dx = e.clientX - cLastX;
+      const dy = e.clientY - cLastY;
+      if (Math.abs(dx) + Math.abs(dy) > 3) {
+        cMoved = true;
+        autoSpin = false;
+        document.getElementById("btnAutoSpin").classList.remove("active");
+      }
+      cLastX = e.clientX; cLastY = e.clientY;
+
+      if (cityCam.mode === "overview") {
+        cityCam.targetHeading -= dx * 0.28;
+        cityCam.targetPitch = Math.max(-75, Math.min(-6, cityCam.targetPitch - dy * 0.22));
+      } else {
+        cityCam.targetHeading -= dx * 0.22;
+        cityCam.targetPitch = Math.max(-45, Math.min(35, cityCam.targetPitch + dy * 0.18));
+      }
+    });
+    window.addEventListener("pointerup", () => { cDrag = false; });
+
+    cEl.addEventListener("wheel", (e) => {
+      if (currentMode !== "city") return;
+      e.preventDefault();
+      if (cityCam.mode === "overview") {
+        cityCam.targetRange = Math.max(160, Math.min(1800, cityCam.targetRange * (1 + e.deltaY * 0.001)));
+      }
+    }, { passive: false });
+
+    // Click to inspect PLATEAU 2025 building attributes (only when not dragging)
+    let hlFeat = null, hlColor = null;
+    const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    clickHandler.setInputAction((m) => {
+      if (cMoved) return;
+      if (hlFeat && hlColor) { try { hlFeat.color = hlColor; } catch (_) {} }
+      const picked = viewer.scene.pick(m.position);
+      if (picked instanceof Cesium.Cesium3DTileFeature) {
+        hlFeat = picked;
+        hlColor = Cesium.Color.clone(picked.color, new Cesium.Color());
+        picked.color = Cesium.Color.fromCssColorString("#f5df96").withAlpha(0.92);
+
+        const g = (keys) => {
+          for (const k of keys) {
+            const v = picked.getProperty(k);
+            if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+          }
+          return "（記載なし）";
+        };
+        document.getElementById("bName").textContent = g(["名称", "name", "gml_name"]);
+        const h = picked.getProperty("計測高さ") ?? picked.getProperty("measuredHeight");
+        document.getElementById("bHeight").textContent = h ? `${Number(h).toFixed(1)} m` : "-";
+        const fl = picked.getProperty("地上階数") ?? picked.getProperty("storeysAboveGround");
+        document.getElementById("bFloors").textContent = fl ? `地上 ${fl} 階` : "-";
+        document.getElementById("bUsage").textContent = g(["用途", "usage"]);
+        document.getElementById("bldgPopup").classList.remove("hidden");
+      }
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    function setCityTime(hourJST, btnEl) {
+      document.querySelectorAll("#dockCity .dock-btn[data-time]").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      const utcHour = (hourJST - 9 + 24) % 24;
+      viewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(Date.UTC(2026, 4, 20, utcHour, 0, 0)));
+      viewer.scene.globe.enableLighting = (hourJST >= 17 || hourJST <= 7);
+    }
+    setCityTime(13, null);
+
+    // =========================================================================
+    // 2. MATTERPORT-STYLE 360° PHOTOREALISTIC PANORAMA VIEWER (THREE.JS)
+    // =========================================================================
+    const ROOMS = {
+      living: {
+        name: "リビング・ダイニング",
+        img: "assets/pano_living.jpg",
+        initYaw: 0, initPitch: -2,
+        fp: [69, 68],
+        hotspots: [
+          { target: "kitchen", label: "キッチンへ移動", yaw: 68,  pitch: -14 },
+          { target: "terrace", label: "41F スカイテラスへ", yaw: -12, pitch: -16 },
+          { target: "bedroom", label: "マスターベッドルームへ", yaw: 135, pitch: -14 }
+        ]
+      },
+      kitchen: {
+        name: "アイランドキッチン",
+        img: "assets/pano_kitchen.jpg",
+        initYaw: 0, initPitch: -4,
+        fp: [173, 36],
+        hotspots: [
+          { target: "living",  label: "リビングへ戻る", yaw: -95, pitch: -15 },
+          { target: "bedroom", label: "マスターベッドルームへ", yaw: 115, pitch: -15 }
+        ]
+      },
+      bedroom: {
+        name: "マスターベッドルーム",
+        img: "assets/pano_bedroom.jpg",
+        initYaw: 0, initPitch: -3,
+        fp: [173, 88],
+        hotspots: [
+          { target: "living",  label: "リビングへ戻る", yaw: -110, pitch: -15 },
+          { target: "terrace", label: "41F スカイテラスへ", yaw: 28,   pitch: -14 }
+        ]
+      },
+      terrace: {
+        name: "41F スカイテラス",
+        img: "assets/pano_terrace.jpg",
+        initYaw: 0, initPitch: -2,
+        fp: [110, 130],
+        hotspots: [
+          { target: "living",  label: "リビングへ戻る", yaw: 175, pitch: -16 },
+          { target: "bedroom", label: "マスターベッドルームへ", yaw: 125, pitch: -14 }
+        ]
+      }
+    };
+
+    let panoInited = false;
+    let pScene, pCam, pRenderer, pMesh, pTexLoader;
+    const texCache = {};
+    let currentRoom = "living";
+    let pYaw = 0, pPitch = -2, pFov = 72;
+    let pTargetYaw = 0, pTargetPitch = -2, pTargetFov = 72;
+    let pDrag = false, pLastX = 0, pLastY = 0;
+
+    function initPano() {
+      if (panoInited) return;
+      panoInited = true;
+
+      const wrap = document.getElementById("panoContainer");
+      pScene = new THREE.Scene();
+      pCam = new THREE.PerspectiveCamera(pFov, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+      pCam.position.set(0, 0, 0);
+
+      pRenderer = new THREE.WebGLRenderer({ antialias: true });
+      pRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      pRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      pRenderer.outputEncoding = THREE.sRGBEncoding;
+      wrap.appendChild(pRenderer.domElement);
+
+      const geom = new THREE.SphereGeometry(40, 64, 48);
+      geom.scale(-1, 1, 1); // Inside-out sphere for 360° panorama
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      pMesh = new THREE.Mesh(geom, mat);
+      pScene.add(pMesh);
+
+      pTexLoader = new THREE.TextureLoader();
+
+      // Preload all 4 photorealistic 360° panoramas with max anisotropy for crisp sharpness
+      const maxAniso = pRenderer.capabilities.getMaxAnisotropy();
+      Object.entries(ROOMS).forEach(([k, r]) => {
+        pTexLoader.load(r.img, (tex) => {
+          tex.encoding = THREE.sRGBEncoding;
+          tex.minFilter = THREE.LinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          tex.generateMipmaps = false;
+          tex.anisotropy = maxAniso;
+          texCache[k] = tex;
+          if (k === currentRoom) {
+            pMesh.material.map = tex;
+            pMesh.material.needsUpdate = true;
+          }
+        });
+      });
+
+      // Smooth Drag & Zoom on Pano Container
+      wrap.addEventListener("pointerdown", (e) => {
+        pDrag = true; pLastX = e.clientX; pLastY = e.clientY;
+      });
+      window.addEventListener("pointermove", (e) => {
+        if (!pDrag || currentMode !== "pano") return;
+        const dx = e.clientX - pLastX;
+        const dy = e.clientY - pLastY;
+        pLastX = e.clientX; pLastY = e.clientY;
+        if (Math.abs(dx) + Math.abs(dy) > 2) {
+          autoSpin = false;
+          document.getElementById("btnAutoSpin").classList.remove("active");
+        }
+        pTargetYaw   -= dx * 0.22;
+        pTargetPitch  = Math.max(-55, Math.min(55, pTargetPitch + dy * 0.18));
+      });
+      window.addEventListener("pointerup", () => { pDrag = false; });
+
+      wrap.addEventListener("wheel", (e) => {
+        if (currentMode !== "pano") return;
+        e.preventDefault();
+        pTargetFov = Math.max(38, Math.min(92, pTargetFov + e.deltaY * 0.04));
+      }, { passive: false });
+
+      window.addEventListener("resize", () => {
+        if (!pRenderer) return;
+        pCam.aspect = wrap.clientWidth / wrap.clientHeight;
+        pCam.updateProjectionMatrix();
+        pRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      });
+
+      buildHotspots("living");
+    }
+
+    function buildHotspots(roomKey) {
+      const layer = document.getElementById("hotspotLayer");
+      layer.innerHTML = "";
+      const room = ROOMS[roomKey];
+      if (!room) return;
+      room.hotspots.forEach((h) => {
+        const el = document.createElement("div");
+        el.className = "hotspot";
+        el.dataset.yaw = h.yaw;
+        el.dataset.pitch = h.pitch;
+        el.innerHTML = `<div class="hotspot-ring">➜</div><div class="hotspot-label">${h.label}</div>`;
+        el.onclick = () => goPanoRoom(h.target);
+        layer.appendChild(el);
+      });
+    }
+
+    function updateHotspotPositions() {
+      if (!panoInited || currentMode !== "pano") return;
+      const layer = document.getElementById("hotspotLayer");
+      const W = window.innerWidth, H = window.innerHeight;
+      layer.querySelectorAll(".hotspot").forEach((el) => {
+        const yaw = THREE.MathUtils.degToRad(Number(el.dataset.yaw));
+        const pitch = THREE.MathUtils.degToRad(Number(el.dataset.pitch));
+        const v = new THREE.Vector3(
+          Math.cos(pitch) * Math.sin(yaw),
+          Math.sin(pitch),
+          -Math.cos(pitch) * Math.cos(yaw)
+        ).multiplyScalar(20);
+        v.project(pCam);
+        if (v.z > 1) {
+          el.style.opacity = "0";
+          el.style.pointerEvents = "none";
+        } else {
+          el.style.left = ((v.x * 0.5 + 0.5) * W) + "px";
+          el.style.top  = ((-v.y * 0.5 + 0.5) * H) + "px";
+          el.style.opacity = "1";
+          el.style.pointerEvents = "auto";
+        }
+      });
+    }
+
+    function goPanoRoom(roomKey) {
+      if (!ROOMS[roomKey]) return;
+      initPano();
+      const fade = document.getElementById("transitionFade");
+      // Matterport-style brief zoom-in + crossfade
+      pTargetFov = Math.max(46, pTargetFov - 12);
+      fade.classList.add("show");
+
+      setTimeout(() => {
+        currentRoom = roomKey;
+        const r = ROOMS[roomKey];
+        if (texCache[roomKey]) {
+          pMesh.material.map = texCache[roomKey];
+          pMesh.material.needsUpdate = true;
+        } else {
+          pTexLoader.load(r.img, (tex) => {
+            tex.encoding = THREE.sRGBEncoding;
+            texCache[roomKey] = tex;
+            pMesh.material.map = tex;
+            pMesh.material.needsUpdate = true;
+          });
+        }
+        pYaw = pTargetYaw = r.initYaw;
+        pPitch = pTargetPitch = r.initPitch;
+        pFov = pTargetFov = 72;
+
+        document.querySelectorAll("#dockPano .dock-btn[data-room]").forEach(b => {
+          b.classList.toggle("active", b.dataset.room === roomKey);
+        });
+        document.querySelectorAll(".fp-room").forEach(el => el.classList.remove("active"));
+        const fp = document.getElementById("fp-" + roomKey);
+        if (fp) fp.classList.add("active");
+        buildHotspots(roomKey);
+        document.getElementById("statusText").textContent =
+          `360°デジタル内覧：${r.name} — 左ドラッグで見渡し、床のリングまたは左下間取り図クリックで部屋移動`;
+        fade.classList.remove("show");
+      }, 260);
+    }
+
+    // =========================================================================
+    // 3. MODE SWITCHER, ONE-CLICK NAV PAD & AUTO GUIDED TOUR
+    // =========================================================================
+    function setMode(mode) {
+      currentMode = mode;
+      const isCity = (mode === "city");
+      document.getElementById("tabCity").classList.toggle("active", isCity);
+      document.getElementById("tabPano").classList.toggle("active", !isCity);
+      document.getElementById("dockCity").classList.toggle("hidden", !isCity);
+      document.getElementById("dockPano").classList.toggle("hidden", isCity);
+      document.getElementById("miniFloorplan").classList.toggle("hidden", isCity);
+      document.getElementById("hotspotLayer").classList.toggle("hidden", isCity);
+      if (!isCity) document.getElementById("bldgPopup").classList.add("hidden");
+
+      const panoEl = document.getElementById("panoContainer");
+      if (isCity) {
+        panoEl.classList.remove("active");
+      } else {
+        initPano();
+        panoEl.classList.add("active");
+        goPanoRoom(currentRoom);
+      }
+    }
+
+    function nudgeView(deltaYaw, deltaPitch) {
+      autoSpin = false;
+      document.getElementById("btnAutoSpin").classList.remove("active");
+      if (currentMode === "city") {
+        cityCam.targetHeading += deltaYaw;
+        cityCam.targetPitch += deltaPitch;
+      } else {
+        pTargetYaw += deltaYaw;
+        pTargetPitch = Math.max(-55, Math.min(55, pTargetPitch + deltaPitch));
+      }
+    }
+
+    function nudgeZoom(dir) {
+      if (currentMode === "city") {
+        if (cityCam.mode === "overview") {
+          cityCam.targetRange = Math.max(160, Math.min(1800, cityCam.targetRange * (dir < 0 ? 0.78 : 1.28)));
+        }
+      } else {
+        pTargetFov = Math.max(38, Math.min(92, pTargetFov + dir * 10));
+      }
+    }
+
+    function toggleAutoSpin() {
+      autoSpin = !autoSpin;
+      document.getElementById("btnAutoSpin").classList.toggle("active", autoSpin);
+    }
+
+    function toggleTour() {
+      const btn = document.getElementById("btnTour");
+      if (tourTimer) {
+        clearInterval(tourTimer);
+        tourTimer = null;
+        btn.classList.remove("playing");
+        btn.textContent = "🎬 自動ツアー再生";
+        return;
+      }
+      btn.classList.add("playing");
+      btn.textContent = "■ ツアー停止";
+      autoSpin = true;
+      document.getElementById("btnAutoSpin").classList.add("active");
+
+      const steps = [
+        () => { setMode("city"); selectCityView("overview", document.querySelector('[data-cam="overview"]')); },
+        () => { selectCityView("f28", document.querySelector('[data-cam="f28"]')); },
+        () => { selectCityView("f41", document.querySelector('[data-cam="f41"]')); },
+        () => { setMode("pano"); goPanoRoom("living"); },
+        () => { goPanoRoom("kitchen"); },
+        () => { goPanoRoom("bedroom"); },
+        () => { goPanoRoom("terrace"); }
+      ];
+      let idx = 0;
+      steps[0]();
+      tourTimer = setInterval(() => {
+        idx = (idx + 1) % steps.length;
+        steps[idx]();
+      }, 6000);
+    }
+
+    // =========================================================================
+    // 4. UNIFIED 60FPS ANIMATION LOOP (SMOOTH DAMPING FOR BOTH VIEWERS)
+    // =========================================================================
+    function tick() {
+      requestAnimationFrame(tick);
+
+      if (currentMode === "city") {
+        if (autoSpin) {
+          cityCam.targetHeading += (cityCam.mode === "overview" ? 0.08 : 0.04);
+        }
+        cityCam.heading += (cityCam.targetHeading - cityCam.heading) * 0.09;
+        cityCam.pitch   += (cityCam.targetPitch   - cityCam.pitch)   * 0.09;
+        cityCam.range   += (cityCam.targetRange   - cityCam.range)   * 0.09;
+        cityCam.floorHeight += (cityCam.targetFloorHeight - cityCam.floorHeight) * 0.09;
+        applyCityCamera();
+      } else if (panoInited) {
+        if (autoSpin) pTargetYaw += 0.06;
+        pYaw   += (pTargetYaw   - pYaw)   * 0.1;
+        pPitch += (pTargetPitch - pPitch) * 0.1;
+        pFov   += (pTargetFov   - pFov)   * 0.1;
+
+        pCam.fov = pFov;
+        pCam.updateProjectionMatrix();
+
+        const yawRad = THREE.MathUtils.degToRad(pYaw);
+        const pitchRad = THREE.MathUtils.degToRad(pPitch);
+        pCam.lookAt(
+          Math.cos(pitchRad) * Math.sin(yawRad),
+          Math.sin(pitchRad),
+          -Math.cos(pitchRad) * Math.cos(yawRad)
+        );
+        pRenderer.render(pScene, pCam);
+        updateHotspotPositions();
+
+        // Update radar cone on mini floorplan
+        const r = ROOMS[currentRoom];
+        const radar = document.getElementById("fpRadar");
+        if (radar && r) {
+          radar.setAttribute("transform", `translate(${r.fp[0]}, ${r.fp[1]}) rotate(${pYaw})`);
+        }
+      }
+    }
+    tick();
+  </script>
+</body>
+</html>
