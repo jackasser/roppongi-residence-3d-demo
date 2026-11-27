@@ -1788,43 +1788,29 @@
           </div>
         </div>
 
-        <form class="form-box reveal" id="demoInquiryForm">
-          <div style="font-family:var(--serif); font-size:20px; margin-bottom:20px; letter-spacing:0.06em;">
+        <div class="form-box reveal" id="contactCard">
+          <div style="font-family:var(--en); font-size:12px; letter-spacing:0.22em; color:var(--gold); margin-bottom:8px;">
+            OFFICIAL CONTACT &nbsp;—&nbsp; つむぎや株式会社
+          </div>
+          <div style="font-family:var(--serif); font-size:22px; line-height:1.45; margin-bottom:14px; letter-spacing:0.06em;">
             デモ試作・オンライン説明のご相談
           </div>
-          <div class="form-row">
-            <label for="fCompany">貴社名</label>
-            <input id="fCompany" type="text" placeholder="例：〇〇不動産株式会社" required />
-          </div>
-          <div class="form-row">
-            <label for="fName">ご担当者様お名前</label>
-            <input id="fName" type="text" placeholder="例：山田 太郎" required />
-          </div>
-          <div class="form-row">
-            <label for="fEmail">メールアドレス</label>
-            <input id="fEmail" type="email" placeholder="example@company.co.jp" required />
-          </div>
-          <div class="form-row">
-            <label for="fType">ご興味のある内容</label>
-            <select id="fType">
-              <option>物件紹介3D動画＋特設HPの1物件試作（PoC）</option>
-              <option>建築前・改装前の3D眺望シミュレーション</option>
-              <option>3Dデジタル内覧デモのオンライン説明（15分）</option>
-              <option>概算費用・納期の資料請求</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label for="fMsg">対象物件エリア・ご要望（任意）</label>
-            <textarea id="fMsg" rows="3" placeholder="例：港区・渋谷区の新築レジデンス1棟で試作を検討しています"></textarea>
-          </div>
-          <button class="btn-gold" type="submit" style="width:100%; justify-content:center; padding:14px;">
-            相談内容を送信する（デモ画面）
-          </button>
-          <p class="form-note">※本フォームはWebデモ用の動作確認UIです（外部サーバーへの実送信は行いません）。</p>
-          <div class="form-toast" id="formToast">
-            デモ画面での入力を確認しました。実運用時は貴社のCRM・フォーム・通知先メールへ連携して即時受付できます。
-          </div>
-        </form>
+          <p style="color:var(--ink-muted); font-size:13.5px; line-height:1.9; margin:0 0 22px;">
+            新築・再販物件の3Dデジタル内覧や60fps物件紹介映像の制作相談は、つむぎや株式会社の公式お問い合わせフォームより受け付けております。図面やご検討エリアが決まっていなくても、まずは15分のオンラインデモ説明からお気軽にご相談ください。
+          </p>
+          <ul style="list-style:none; padding:0; margin:0 0 26px; display:grid; gap:10px; font-size:13.5px; color:rgba(246,243,236,0.92);">
+            <li style="padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-dark); border-radius:4px;">✓ 物件紹介3D動画＋特設HPの1物件試作（PoC）</li>
+            <li style="padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-dark); border-radius:4px;">✓ 建築前・改装前の実寸3D眺望・昼夜シミュレーション</li>
+            <li style="padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-dark); border-radius:4px;">✓ 3DGS自由歩行デジタル内覧のオンライン実演（15分）</li>
+            <li style="padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-dark); border-radius:4px;">✓ 概算費用・制作スケジュールのご相談</li>
+          </ul>
+          <a class="btn-gold" id="officialContactLink" href="https://tsumugiya-it.com/contact/" target="_blank" rel="noopener noreferrer" style="width:100%; justify-content:center; padding:16px 20px; font-size:14.5px; text-align:center;">
+            つむぎや株式会社 お問い合わせフォームへ進む →
+          </a>
+          <p class="form-note" style="margin-top:14px; text-align:center;">
+            公式受付ページ（<a href="https://tsumugiya-it.com/contact/" target="_blank" rel="noopener noreferrer" style="color:var(--gold); text-decoration:underline;">tsumugiya-it.com/contact/</a>）を別タブで開きます。
+          </p>
+        </div>
       </div>
     </div>
   </section>
@@ -2062,13 +2048,7 @@
         }
       });
 
-      // Demo inquiry form
-      const form = document.getElementById("demoInquiryForm");
-      const toast = document.getElementById("formToast");
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        toast.classList.add("show");
-      });
+      // Official inquiry link points directly to https://tsumugiya-it.com/contact/
 
       // =====================================================================
       // INITIAL LUXURY LOADING ANIMATION CONTROLLER
