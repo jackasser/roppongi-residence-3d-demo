@@ -2161,14 +2161,21 @@
           pScene.add(pl);
         });
 
-        // 1. Load REAL UE 5.5 2025 PLATEAU Minato-ku 360° Skybox + PMREM reflections!
+        // 1. Load REAL UE 5.5 2025 PLATEAU Minato-ku 360° Skybox (bright daylight toneMapped:false sky dome + PMREM reflections!)
         const pmrem = new THREE.PMREMGenerator(pRenderer);
         pmrem.compileEquirectangularShader();
         const texLoader = new THREE.TextureLoader();
-        texLoader.load("assets/skybox_minato_41f_ue5.jpg", (skyTex) => {
+        texLoader.load("assets/skybox_minato_41f_ue5.jpg?v=bright2", (skyTex) => {
           skyTex.encoding = THREE.sRGBEncoding;
           skyTex.mapping = THREE.EquirectangularReflectionMapping;
-          pScene.background = skyTex;
+          // Render outdoor skyline on an un-darkened sky sphere aligned identically to +X East (Tokyo Tower!)
+          const skyGeo = new THREE.SphereGeometry(180, 64, 40);
+          skyGeo.scale(-1, 1, 1);
+          const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false, depthWrite: false });
+          const skyDome = new THREE.Mesh(skyGeo, skyMat);
+          // After scale(-1,1,1), rotate Y by PI so u=0.5 (Azabudai Hills & Tokyo Tower) faces +X East dead-center!
+          skyDome.rotation.y = Math.PI;
+          pScene.add(skyDome);
           pScene.environment = pmrem.fromEquirectangular(skyTex).texture;
           pmrem.dispose();
           loadProgress.sky = 100;
