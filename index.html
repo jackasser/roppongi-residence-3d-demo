@@ -12,6 +12,12 @@
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <style>
     :root {
       --bg-dark: #0a0c10;
@@ -2125,31 +2131,34 @@
       let curTimeOfDay = "day";
       const TIME_PRESETS = {
         day: {
-          url: "assets/skybox_minato_41f_day.jpg?v=4",
+          url: "assets/skybox_minato_41f_day.jpg?v=7",
           label: "昼（晴天）",
-          exposure: 1.16,
-          hemiSky: 0xffffff, hemiGnd: 0x857d70, hemiInt: 0.90,
-          sunCol: 0xfff8ee, sunInt: 1.90, sunPos: [-10, 18, 12],
-          fillCol: 0xebf5ff, fillInt: 0.52,
-          pts: [0.80, 0.80, 0.72, 0.55, 0.40]
+          exposure: 1.08,
+          hemiSky: 0xf4f8ff, hemiGnd: 0x766d62, hemiInt: 0.78,
+          sunCol: 0xfff6e8, sunInt: 1.75, sunPos: [-10, 18, 12],
+          fillCol: 0xdceeff, fillInt: 0.48,
+          pts: [0.65, 0.65, 0.60, 0.50, 0.35],
+          emissiveInt: 1.15, bloomStr: 0.14, shadowOpacity: 0.85
         },
         sunset: {
-          url: "assets/skybox_minato_41f_ue5.jpg?v=4",
+          url: "assets/skybox_minato_41f_ue5.jpg?v=7",
           label: "夕景",
-          exposure: 1.00,
-          hemiSky: 0xffe8cc, hemiGnd: 0x382e24, hemiInt: 0.58,
-          sunCol: 0xffcf92, sunInt: 1.45, sunPos: [-14, 11, 10],
-          fillCol: 0xffd7a4, fillInt: 0.34,
-          pts: [1.50, 1.40, 1.30, 1.50, 0.80]
+          exposure: 0.96,
+          hemiSky: 0xffd7b0, hemiGnd: 0x352a20, hemiInt: 0.52,
+          sunCol: 0xffb870, sunInt: 1.45, sunPos: [-14, 10, 10],
+          fillCol: 0xffc78e, fillInt: 0.32,
+          pts: [1.35, 1.25, 1.20, 1.55, 0.75],
+          emissiveInt: 2.25, bloomStr: 0.24, shadowOpacity: 0.92
         },
         night: {
-          url: "assets/skybox_minato_41f_night.jpg?v=5",
+          url: "assets/skybox_minato_41f_night.jpg?v=7",
           label: "東京夜景",
-          exposure: 0.86,
-          hemiSky: 0x2a3f72, hemiGnd: 0x16120e, hemiInt: 0.30,
-          sunCol: 0x5c7ec4, sunInt: 0.24, sunPos: [-10, 14, 8],
-          fillCol: 0x3b5896, fillInt: 0.20,
-          pts: [1.85, 1.75, 1.65, 2.25, 1.15]
+          exposure: 0.82,
+          hemiSky: 0x243866, hemiGnd: 0x16110c, hemiInt: 0.26,
+          sunCol: 0x4c6cb0, sunInt: 0.20, sunPos: [-10, 14, 8],
+          fillCol: 0x2e4a84, fillInt: 0.16,
+          pts: [1.75, 1.65, 1.55, 2.30, 1.15],
+          emissiveInt: 3.10, bloomStr: 0.30, shadowOpacity: 1.00
         }
       };
 
@@ -2160,9 +2169,11 @@
       let pAutoTour = true, autoStepIdx = 0, autoTimer = 0;
       const autoOrder = ["living", "window", "terrace", "dining", "kitchen"];
 
-      let pRenderer = null, pScene = null, pCam = null;
+      let pRenderer = null, pScene = null, pCam = null, pComposer = null, pBloomPass = null;
       let pHemi = null, pSun = null, pFill = null, pSkyDome = null, pPmrem = null, pTexLoader = null;
       const pPointLights = [];
+      const pEmissiveMats = [];
+      const pShadowMats = [];
       const skyCache = {};
       const activePointers = new Map();
       let pinchStartDist = 0, pinchStartFov = 62;
@@ -2229,6 +2240,9 @@
         pPointLights.forEach((pl, idx) => {
           if (preset.pts[idx] !== undefined) pl.intensity = preset.pts[idx];
         });
+        pEmissiveMats.forEach((m) => { m.emissiveIntensity = preset.emissiveInt || 1.5; });
+        pShadowMats.forEach((m) => { m.opacity = preset.shadowOpacity || 0.9; });
+        if (pBloomPass && preset.bloomStr !== undefined) pBloomPass.strength = preset.bloomStr;
 
         loadSkyPreset(key, (entry) => {
           if (curTimeOfDay !== key) return;
@@ -2284,7 +2298,16 @@
         pRenderer.toneMappingExposure = TIME_PRESETS.day.exposure;
         pRenderer.shadowMap.enabled = true;
         pRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        pRenderer.physicallyCorrectLights = false;
         panoStage.appendChild(pRenderer.domElement);
+
+        // Cinema Post-Processing Pipeline (subtle UE5-style optical bloom on chandelier, coves, fireplace & Tokyo Tower!)
+        if (THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass) {
+          pComposer = new THREE.EffectComposer(pRenderer);
+          pComposer.addPass(new THREE.RenderPass(pScene, pCam));
+          pBloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(w, h), TIME_PRESETS.day.bloomStr, 0.55, 0.88);
+          pComposer.addPass(pBloomPass);
+        }
 
         // Dynamic Architectural Lighting (syncs seamlessly across Day / Sunset / Tokyo Night!)
         pHemi = new THREE.HemisphereLight(TIME_PRESETS.day.hemiSky, TIME_PRESETS.day.hemiGnd, TIME_PRESETS.day.hemiInt);
@@ -2349,27 +2372,104 @@
           }, 600);
         });
 
-        // 2. Load REAL 3D 41F Penthouse GLB Mesh!
+        // 2. Load REAL Photorealistic 3D 41F Penthouse GLB v2 (Normal maps, 3D Olive Trees, Sheer Linen Drapery, Ultra-Clear Glass & Contact Shadows!)
         const gltfLoader = new THREE.GLTFLoader();
         gltfLoader.load(
-          "assets/penthouse_41f.glb",
+          "assets/penthouse_41f.glb?v=6",
           (gltf) => {
             const root = gltf.scene;
             root.traverse((obj) => {
-              if (obj.isMesh) {
-                const matName = obj.material && obj.material.name ? obj.material.name : "";
-                const isGlass = matName.includes("Glass");
-                obj.castShadow = !isGlass;
-                obj.receiveShadow = !isGlass;
-                if (obj.material) {
-                  obj.material.envMapIntensity = matName.includes("Marble") || matName.includes("Brass") || matName.includes("Nero") ? 1.35 : 0.75;
-                  obj.material.needsUpdate = true;
-                }
+              if (!obj.isMesh || !obj.material) return;
+              const mat = obj.material;
+              const matName = mat.name || "";
+
+              if (matName === "M_ContactShadow" || matName === "M_AoStrip") {
+                // Pure velvety baked AO / contact shadow decals (zero specular shine, zero z-fighting!)
+                const shMat = new THREE.MeshBasicMaterial({
+                  map: mat.map,
+                  transparent: true,
+                  opacity: TIME_PRESETS[curTimeOfDay].shadowOpacity,
+                  depthWrite: false,
+                  polygonOffset: true,
+                  polygonOffsetFactor: -1,
+                  polygonOffsetUnits: -1
+                });
+                obj.material = shMat;
+                obj.castShadow = false;
+                obj.receiveShadow = false;
+                obj.renderOrder = 2;
+                pShadowMats.push(shMat);
+                return;
               }
+
+              if (matName === "M_GlassBalustrade" || matName.includes("Glass")) {
+                // Ultra-clear low-iron museum glass balustrade (envMapIntensity=0.06 -> ZERO gray haze over Tokyo night skyline!)
+                obj.material = new THREE.MeshPhysicalMaterial({
+                  color: 0x0b1624,
+                  transparent: true,
+                  opacity: 0.04,
+                  roughness: 0.04,
+                  metalness: 0.0,
+                  reflectivity: 0.08,
+                  envMapIntensity: 0.06,
+                  depthWrite: false,
+                  side: THREE.DoubleSide
+                });
+                obj.castShadow = false;
+                obj.receiveShadow = false;
+                obj.renderOrder = 4;
+                return;
+              }
+
+              if (matName === "M_SheerCurtain") {
+                mat.transparent = true;
+                mat.opacity = 0.62;
+                mat.roughness = 0.94;
+                mat.depthWrite = false;
+                mat.side = THREE.DoubleSide;
+                obj.castShadow = false;
+                obj.receiveShadow = true;
+                obj.renderOrder = 3;
+                return;
+              }
+
+              if (matName === "M_CalacattaMarble" || matName === "M_NeroMarquina") {
+                // Polished natural marble with physical clearcoat glazing reflecting Tokyo Tower & brass chandelier!
+                const phys = new THREE.MeshPhysicalMaterial({
+                  name: matName,
+                  map: mat.map,
+                  normalMap: mat.normalMap,
+                  normalScale: new THREE.Vector2(0.45, 0.45),
+                  roughness: matName === "M_CalacattaMarble" ? 0.14 : 0.15,
+                  metalness: 0.02,
+                  clearcoat: 0.58,
+                  clearcoatRoughness: 0.14,
+                  envMapIntensity: 1.45,
+                  side: THREE.DoubleSide
+                });
+                obj.material = phys;
+                obj.castShadow = true;
+                obj.receiveShadow = true;
+                return;
+              }
+
+              if (matName === "M_EmissiveCove" || matName === "M_FireplaceGlow") {
+                mat.emissiveIntensity = TIME_PRESETS[curTimeOfDay].emissiveInt;
+                pEmissiveMats.push(mat);
+                obj.castShadow = false;
+                obj.receiveShadow = false;
+                return;
+              }
+
+              obj.castShadow = !matName.includes("Leaf");
+              obj.receiveShadow = true;
+              mat.envMapIntensity = matName.includes("Brass") || matName.includes("Metal") ? 1.50 : 0.72;
+              if (mat.normalMap) mat.normalScale = new THREE.Vector2(0.65, 0.65);
+              mat.needsUpdate = true;
             });
             pScene.add(root);
             loadProgress.glb = 100;
-            updatePageLoader("41Fペントハウス実3Dモデル準備完了");
+            updatePageLoader("41Fペントハウス高精細3Dモデル準備完了");
             stageLoader.classList.add("hidden");
           },
           (xhr) => {
@@ -2455,6 +2555,7 @@
           pCam.aspect = nw / nh;
           pCam.updateProjectionMatrix();
           pRenderer.setSize(nw, nh);
+          if (pComposer) pComposer.setSize(nw, nh);
         });
 
         buildFloorHotspots();
@@ -2588,7 +2689,8 @@
             camPos.y + Math.cos(phi),
             camPos.z - Math.sin(phi) * Math.cos(theta)
           );
-          pRenderer.render(pScene, pCam);
+          if (pComposer) pComposer.render();
+          else pRenderer.render(pScene, pCam);
           updateHotspots3D();
 
           const [fx, fy] = worldToFloorplan(camPos.x, camPos.z);
