@@ -2150,7 +2150,7 @@
       const autoOrder = ["living", "window", "terrace", "dining", "kitchen"];
 
       let pRenderer = null, pScene = null, pCam = null, pTexLoader = null, pSkyDome = null;
-      let shellMats = null;
+      let shellMats = null, railMats = null;
       let gsViewer = null, gsLoading = false;
       const skyTexCache = {};
       const activePointers = new Map();
@@ -2293,6 +2293,16 @@
           shellMats.wall.color.setHex(GS_CONFIG[mood].shellWall);
           shellMats.deck.color.setHex(GS_CONFIG[mood].shellDeck);
         }
+        if (railMats) {
+          const isNight = mood === "night";
+          railMats.brass.color.setHex(isNight ? 0xc29b61 : 0xb89660);
+          railMats.brass.emissive.setHex(isNight ? 0x3a2610 : 0x1a140c);
+          railMats.post.color.setHex(isNight ? 0x26211c : 0x232426);
+          railMats.post.emissive.setHex(isNight ? 0x120d08 : 0x050506);
+          railMats.glass.color.setHex(isNight ? 0x9bb8d8 : 0xdbe9f4);
+          railMats.glass.opacity = isNight ? 0.13 : 0.11;
+          railMats.led.visible = isNight;
+        }
         updateTourStatus();
         loadSplatMood(mood);
       }
@@ -2350,6 +2360,89 @@
         addShellPlane(10.2, 3.8, -0.22, 1.75,  7.25, 0,  Math.PI,     shellMats.wall);
         // Top window lintel/header beam above east glass (X=4.72, Y=3.22..3.62)
         addShellPlane(16.7, 0.45, 4.72, 3.42, -1.0, 0, -Math.PI / 2, shellMats.wall);
+
+        // Real 3D Architectural 41F Sky Terrace Glass Balustrade + Satin-Brass Handrail + Posts
+        // Exact coordinates from Penthouse41F_Clean.obj (East X=7.72, North Z=-8.97, South Z=+6.97, H=1.15m)
+        // Ensures crisp, unmistakable terrace safety railings in BOTH Day & Night modes with true Z-depth!
+        const rAmb = new THREE.AmbientLight(0xfff1dc, 0.85);
+        const rDir = new THREE.DirectionalLight(0xffe8c2, 1.35);
+        rDir.position.set(2.0, 6.0, -3.0);
+        pScene.add(rAmb, rDir);
+
+        const isInitNight = curTimeOfDay === "night";
+        railMats = {
+          brass: new THREE.MeshStandardMaterial({
+            color: isInitNight ? 0xc29b61 : 0xb89660,
+            emissive: isInitNight ? 0x3a2610 : 0x1a140c,
+            metalness: 0.72,
+            roughness: 0.28
+          }),
+          post: new THREE.MeshStandardMaterial({
+            color: isInitNight ? 0x26211c : 0x232426,
+            emissive: isInitNight ? 0x120d08 : 0x050506,
+            metalness: 0.55,
+            roughness: 0.42
+          }),
+          glass: new THREE.MeshBasicMaterial({
+            color: isInitNight ? 0x9bb8d8 : 0xdbe9f4,
+            transparent: true,
+            opacity: isInitNight ? 0.13 : 0.11,
+            depthWrite: false,
+            side: THREE.DoubleSide
+          }),
+          led: new THREE.MeshBasicMaterial({
+            color: 0xffd28e,
+            transparent: true,
+            opacity: 0.72
+          })
+        };
+        railMats.led.visible = isInitNight;
+
+        const addRailRun = (x1, z1, x2, z2, nPosts) => {
+          const dx = x2 - x1, dz = z2 - z1;
+          const len = Math.hypot(dx, dz);
+          const mx = (x1 + x2) * 0.5, mz = (z1 + z2) * 0.5;
+          const ang = Math.atan2(dx, dz); // local +Z along segment
+          const grp = new THREE.Group();
+          grp.position.set(mx, 0, mz);
+          grp.rotation.y = ang;
+
+          // Satin champagne-brass top handrail (Y=1.15m)
+          const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.056, 0.044, len + 0.04), railMats.brass);
+          topBar.position.set(0, 1.15, 0);
+          grp.add(topBar);
+
+          // Subtle architectural 2700K indirect LED strip tucked under handrail (Night mode accent!)
+          const ledBar = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.012, len), railMats.led);
+          ledBar.position.set(0, 1.122, 0);
+          grp.add(ledBar);
+
+          // Base dark-bronze channel curb (Y=0.055m)
+          const baseBar = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.09, len + 0.04), railMats.post);
+          baseBar.position.set(0, 0.055, 0);
+          grp.add(baseBar);
+
+          // Slim vertical baluster posts
+          for (let i = 0; i < nPosts; i++) {
+            const zOff = -len * 0.5 + (len * i) / Math.max(1, nPosts - 1);
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.036, 1.11, 0.036), railMats.post);
+            post.position.set(0, 0.585, zOff);
+            grp.add(post);
+          }
+
+          // Low-iron ultra-clear glass balustrade panel (renders after SkyDome -10, before 3DGS splats 0 so chairs/plants stay 100% crisp in front!)
+          const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.03), railMats.glass);
+          glassPane.rotation.y = Math.PI / 2;
+          glassPane.position.set(0, 0.615, 0);
+          glassPane.renderOrder = -2;
+          grp.add(glassPane);
+
+          pScene.add(grp);
+        };
+        // East long panoramic railing + North & South return railings of 41F Sky Terrace
+        addRailRun(7.72, -8.97, 7.72,  6.97, 8);
+        addRailRun(4.95, -8.97, 7.72, -8.97, 2);
+        addRailRun(4.95,  6.97, 7.72,  6.97, 2);
 
         loadSkyTex(curTimeOfDay);
         loadSplatMood(curTimeOfDay);
