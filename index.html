@@ -174,22 +174,23 @@
       text-align: right;
     }
 
-    /* 3D Stage Local Loader */
+    /* 3D Stage Local Loader (100% opaque until 3DGS is fully downloaded & sorted so unrendered frames never flash!) */
     .stage-loading {
       position: absolute;
       inset: 0;
-      z-index: 15;
-      background: rgba(8, 10, 14, 0.86);
-      backdrop-filter: blur(8px);
+      z-index: 20;
+      background: #0a0c10;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 12px;
+      gap: 14px;
+      padding: 20px;
+      text-align: center;
       color: var(--ink-light);
       font-size: 13px;
       letter-spacing: 0.06em;
-      transition: opacity 0.4s var(--ease), visibility 0.4s;
+      transition: opacity 0.45s var(--ease), visibility 0.45s;
     }
     .stage-loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .stage-spinner {
@@ -2134,8 +2135,8 @@
         { target: "terrace", label: "41F テラスへ出る",  pos: [ 6.1, 0.22,  0.1] }
       ];
       const GS_CONFIG = {
-        day:   { label: "昼（晴天）", splat: "assets/penthouse_day.splat?v=10",   sky: "assets/skybox_minato_41f_day.jpg?v=7",   shellFloor: 0x6b5d4d, shellWall: 0xa59a8a, shellDeck: 0x4a3b2c },
-        night: { label: "東京夜景",   splat: "assets/penthouse_night.splat?v=10", sky: "assets/skybox_minato_41f_night.jpg?v=7", shellFloor: 0x1e1812, shellWall: 0x151210, shellDeck: 0x17120e }
+        day:   { label: "昼（晴天）", splat: "assets/penthouse_day.splat?v=11",   sky: "assets/skybox_minato_41f_day.jpg?v=7",   shellFloor: 0x6b5d4d, shellWall: 0xa59a8a, shellDeck: 0x4a3b2c },
+        night: { label: "東京夜景",   splat: "assets/penthouse_night.splat?v=11", sky: "assets/skybox_minato_41f_night.jpg?v=7", shellFloor: 0x1e1812, shellWall: 0x151210, shellDeck: 0x17120e }
       };
 
       let tourMode = "indoor";
@@ -2226,7 +2227,7 @@
         const cfg = GS_CONFIG[mood];
         if (!cfg || !pScene || gsLoading) return;
         gsLoading = true;
-        stageLoaderText.textContent = `UE 5.5 Lumen 3DGS（${cfg.label}）を読み込み中...`;
+        stageLoaderText.textContent = `高精細3D空間（${cfg.label}）を読み込み中... しばらくお待ちください`;
         stageLoader.classList.remove("hidden");
 
         try {
@@ -2246,15 +2247,28 @@
           pScene.add(gsViewer);
           await gsViewer.addSplatScene(cfg.splat, {
             format: GaussianSplats3D.SceneFormat.Splat,
-            splatAlphaRemovalThreshold: 5,
+            splatAlphaRemovalThreshold: 8,
             showLoadingUI: false,
             progressiveLoad: false,
             onProgress: (pct) => {
               const p = Math.min(99, Math.round(pct));
               loadProgress.glb = Math.max(loadProgress.glb, p);
-              stageLoaderText.textContent = `UE 5.5 Lumen 3DGS（${cfg.label}）読み込み中... ${p}%`;
+              stageLoaderText.textContent = p < 98
+                ? `高精細3D空間（${cfg.label}）を読み込み中... ${p}%（少々お待ちください）`
+                : `高精細3D空間（${cfg.label}）をレンダリング中... まもなく表示されます`;
               updatePageLoader(`3DGS空間読み込み中... ${p}%`);
             }
+          });
+          // Wait until initial depth sort & crisp frames have actually rendered before revealing!
+          stageLoaderText.textContent = `高精細3D空間（${cfg.label}）をレンダリング中... まもなく表示されます`;
+          await new Promise((resolve) => {
+            let frames = 0;
+            const waitCrisp = () => {
+              frames += 1;
+              if (frames >= 12) resolve();
+              else requestAnimationFrame(waitCrisp);
+            };
+            requestAnimationFrame(waitCrisp);
           });
           loadProgress.glb = 100;
           updatePageLoader("UE 5.5 Lumen 3DGS 自由歩行空間の準備完了");
@@ -2552,6 +2566,22 @@
 
           const [fx, fy] = worldToFloorplan(camPos.x, camPos.z);
           fpRadar.setAttribute("transform", `translate(${fx.toFixed(1)}, ${fy.toFixed(1)}) rotate(${pYaw.toFixed(1)})`);
+
+          // Auto-update active zone label & floorplan highlight only while actively free-walking
+          if (holdWalkDir !== 0 || keysDown.size > 0) {
+            let nearZone = curRoom;
+            const lookEast = Math.sin(THREE.MathUtils.degToRad(pYaw)) >= 0;
+            if (camPos.x > 4.65) nearZone = "terrace";
+            else if (camPos.z < -2.0) nearZone = lookEast ? "dining" : "kitchen";
+            else if (camPos.x > 1.2) nearZone = "window";
+            else nearZone = "living";
+            if (nearZone !== curRoom) {
+              curRoom = nearZone;
+              updateTourStatus();
+              document.querySelectorAll("#roomList .room-btn").forEach((b) => b.classList.toggle("active", b.dataset.room === curRoom));
+              document.querySelectorAll(".fp-zone").forEach((z) => z.classList.toggle("active", z.dataset.fp === curRoom));
+            }
+          }
         } else if (tourMode === "city" && cesiumViewer) {
           cState.heading += (cState.tHeading - cState.heading) * 0.12;
           cState.pitch += (cState.tPitch - cState.pitch) * 0.12;
