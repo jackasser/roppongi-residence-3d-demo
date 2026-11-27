@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Sans+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
   <style>
     :root {
       --bg-dark: #0a0c10;
@@ -52,6 +53,154 @@
     .container {
       width: min(1240px, 90vw);
       margin-inline: auto;
+    }
+
+    /* ---------- Initial Luxury Loading Animation ---------- */
+    .page-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: radial-gradient(circle at 50% 42%, #151a24 0%, #090b0f 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: opacity 0.75s var(--ease), transform 0.75s var(--ease), visibility 0.75s;
+    }
+    .page-loader.done {
+      opacity: 0;
+      transform: translateY(-14px);
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .loader-emblem {
+      position: relative;
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 24px;
+    }
+    .loader-ring {
+      position: absolute;
+      inset: 0;
+      width: 92px;
+      height: 92px;
+      transform: rotate(-90deg);
+    }
+    .loader-ring-bg {
+      fill: none;
+      stroke: rgba(201, 165, 102, 0.16);
+      stroke-width: 1.5;
+    }
+    .loader-ring-fg {
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-dasharray: 264;
+      stroke-dashoffset: 264;
+      transition: stroke-dashoffset 0.28s var(--ease);
+    }
+    .loader-orbit {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid rgba(201, 165, 102, 0.14);
+      border-top-color: rgba(201, 165, 102, 0.72);
+      animation: spinGold 2.4s linear infinite;
+    }
+    @keyframes spinGold {
+      to { transform: rotate(360deg); }
+    }
+    .loader-mono {
+      font-family: var(--en);
+      font-size: 32px;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+    .loader-kicker {
+      font-family: var(--en);
+      font-size: 12px;
+      letter-spacing: 0.30em;
+      color: var(--gold);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .loader-title {
+      font-family: var(--serif);
+      font-size: clamp(20px, 4vw, 28px);
+      letter-spacing: 0.12em;
+      color: var(--ink-light);
+      margin: 0 0 22px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .loader-bar-wrap {
+      width: min(280px, 72vw);
+      height: 2px;
+      background: rgba(255, 255, 255, 0.10);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .loader-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(201, 165, 102, 0.5), var(--gold), #f3dcab);
+      transition: width 0.25s var(--ease);
+    }
+    .loader-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      letter-spacing: 0.08em;
+    }
+    .loader-pct {
+      font-family: var(--en);
+      font-size: 14px;
+      color: var(--gold);
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* 3D Stage Local Loader */
+    .stage-loading {
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      background: rgba(8, 10, 14, 0.86);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--ink-light);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      transition: opacity 0.4s var(--ease), visibility 0.4s;
+    }
+    .stage-loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .stage-spinner {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid rgba(201, 165, 102, 0.22);
+      border-top-color: var(--gold);
+      animation: spinGold 0.9s linear infinite;
+    }
+    .zoom-badge {
+      font-family: var(--en);
+      font-size: 13px;
+      color: var(--gold);
+      padding: 0 6px;
+      letter-spacing: 0.08em;
+      align-self: center;
     }
 
     /* ---------- Header ---------- */
@@ -672,15 +821,16 @@
       transform: translateX(-50%);
       z-index: 12;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       justify-content: center;
-      gap: 8px;
-      background: rgba(10, 13, 20, 0.84);
+      align-items: center;
+      gap: 7px;
+      background: rgba(10, 13, 20, 0.86);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border-dark);
-      padding: 8px 12px;
+      padding: 7px 12px;
       border-radius: 999px;
-      max-width: 94%;
+      max-width: 96%;
     }
     .t3-btn {
       background: rgba(255, 255, 255, 0.06);
@@ -1031,35 +1181,62 @@
       .theater-chapters, .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 640px) {
-      section { padding: 72px 0; }
-      .header-inner { height: 60px; gap: 10px; }
-      .brand-en { font-size: 11.5px; letter-spacing: 0.13em; }
-      .brand-jp { font-size: 10px; letter-spacing: 0.06em; }
-      .header-actions .btn-gold { padding: 8px 12px; font-size: 11px; white-space: nowrap; }
+      section { padding: 68px 0; }
+      .header-inner { height: 58px; gap: 8px; }
+      .brand-en { font-size: 11px; letter-spacing: 0.11em; }
+      .brand-jp { font-size: 9.5px; letter-spacing: 0.04em; white-space: nowrap; }
+      .header-actions .btn-gold { padding: 7px 11px; font-size: 11px; white-space: nowrap; }
       .btn-ghost { display: none; }
-      .hero { padding: 88px 0 24px; }
-      .hero-title { font-size: 26px; letter-spacing: 0.04em; }
+      .hero { padding: 82px 0 22px; }
+      .hero-kicker { font-size: 11px; letter-spacing: 0.16em; }
+      .hero-title { font-size: 23px; letter-spacing: 0.03em; white-space: nowrap; }
+      .hero-lead { font-size: 13.5px; line-height: 1.8; margin-bottom: 22px; }
+      .hero-ctas { flex-direction: column; align-items: stretch; gap: 10px; }
+      .hero-ctas .btn-gold, .hero-ctas .btn-outline-gold { width: 100%; justify-content: center; padding: 13px 16px; font-size: 13px; }
       .chapter-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .theater-chapters, .gallery-grid, .metrics-grid { grid-template-columns: 1fr; }
-      .tour3d-stage-wrap { height: 420px; }
+      .tour3d-stage-wrap { height: 440px; }
       .tour3d-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-      .tour3d-tab { padding: 9px 8px; font-size: 11.5px; }
+      .tour3d-tab { padding: 9px 6px; font-size: 11.5px; }
       .tour3d-controls {
+        flex-wrap: wrap;
         border-radius: 12px;
-        width: calc(100% - 20px);
+        width: calc(100% - 16px);
         max-width: none;
         bottom: 10px;
-        padding: 6px 8px;
+        padding: 7px 8px;
         gap: 5px;
       }
-      .t3-btn { padding: 5px 9px; font-size: 11px; }
-      .tour3d-pill { font-size: 10.5px; padding: 5px 10px; }
-      .form-box { padding: 26px 20px; }
-      .spec-row { grid-template-columns: 118px 1fr; font-size: 13px; }
+      .t3-btn { padding: 7px 10px; font-size: 11.5px; min-height: 34px; }
+      .tour3d-pill { font-size: 10.5px; padding: 5px 10px; max-width: 72%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .room-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .room-btn { grid-template-columns: 1fr; padding: 8px; gap: 6px; }
+      .room-btn img { width: 100%; height: 64px; }
+      .form-box { padding: 24px 18px; }
+      .spec-row { grid-template-columns: 112px 1fr; font-size: 13px; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Initial Luxury Loading Animation -->
+  <div class="page-loader" id="pageLoader" role="status" aria-live="polite">
+    <div class="loader-emblem">
+      <div class="loader-orbit"></div>
+      <svg class="loader-ring" viewBox="0 0 92 92">
+        <circle class="loader-ring-bg" cx="46" cy="46" r="42" />
+        <circle class="loader-ring-fg" id="loaderRingFg" cx="46" cy="46" r="42" />
+      </svg>
+      <span class="loader-mono">R</span>
+    </div>
+    <div class="loader-kicker">ROPPONGI HILLS RESIDENCE B</div>
+    <p class="loader-title">六本木ヒルズレジデンス B棟</p>
+    <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+    <div class="loader-meta">
+      <span id="loaderStep">3D都市データ・ペントハウスモデルを読み込み中...</span>
+      <span class="loader-pct" id="loaderPct">0%</span>
+    </div>
+  </div>
 
   <!-- Sticky Navigation -->
   <header class="site-header" id="siteHeader">
@@ -1087,7 +1264,7 @@
   <section class="hero" id="top">
     <div class="hero-media">
       <video id="heroVideo" autoplay muted loop playsinline preload="metadata" poster="assets/hero_poster.jpg">
-        <source src="media/roppongi_ue5_60fps_web.mp4" type="video/mp4" />
+        <source src="media/roppongi_ue5_60fps_web.mp4#t=6.2" type="video/mp4" />
       </video>
       <div class="hero-scrim"></div>
     </div>
@@ -1372,43 +1549,50 @@
     </div>
   </section>
 
-  <!-- 6. LIVE INTERACTIVE 3D DIGITAL VIEWING STUDIO (Three.js 360° Walkthrough + PLATEAU 2025 3D City) -->
+  <!-- 6. REAL 3D MODEL WALKTHROUGH STUDIO (Three.js GLB 3D Mesh + Real UE 5.5 PLATEAU 2025 Minato-ku Skybox + Live PLATEAU 3D City) -->
   <section class="band-surface" id="tour3d">
     <div class="container">
       <div class="tour3d-head reveal">
         <div>
-          <span class="sec-kicker">05 &nbsp; INTERACTIVE 3D DIGITAL VIEWING</span>
-          <h2 class="sec-title" style="margin-bottom:8px;">360° 室内3D内覧 ＆ 実寸3D街並みシミュレーター</h2>
-          <p class="theater-note" style="max-width:600px;">
-            マウス・指ドラッグで自由に360°見回し、床の丸ピンや間取り図をタップして部屋間を移動できます。上部タブから国土交通省 PLATEAU 2025 の実寸3D港区街並み・階数別眺望へ切り替え可能です。
+          <span class="sec-kicker">05 &nbsp; REAL-TIME 3D MODEL VIEWING</span>
+          <h2 class="sec-title" style="margin-bottom:8px;">実3Dモデル歩行内覧 ＆ PLATEAU 3D街並みシミュレーター</h2>
+          <p class="theater-note" style="max-width:660px;">
+            静止画ではなく、<strong>41Fペントハウスの3Dモデル本体（GLB）</strong>の中をリアルタイムに歩いて移動できます。1本指ドラッグで360°見回し、2本指ピンチ／ホイールで滑らかズーム、前進・後退や間取り図タップで室内〜テラスまで自由に内覧できます。窓の外はUE 5.5×PLATEAU 2025の実レンダリング港区実景です。
           </p>
         </div>
         <div class="tour3d-tabs" role="tablist">
-          <button class="tour3d-tab active" id="tabIndoor3d" type="button" role="tab" aria-selected="true">360° 室内3D内覧</button>
-          <button class="tour3d-tab" id="tabCity3d" type="button" role="tab" aria-selected="false">PLATEAU 3D街並み・眺望</button>
+          <button class="tour3d-tab active" id="tabIndoor3d" type="button" role="tab" aria-selected="true">実3Dモデル室内内覧</button>
+          <button class="tour3d-tab" id="tabCity3d" type="button" role="tab" aria-selected="false">PLATEAU 3D街並み</button>
         </div>
       </div>
 
       <div class="tour3d-shell reveal">
         <div class="tour3d-stage-wrap" id="tour3dStageWrap">
-          <!-- Indoor 360° Three.js Canvas -->
+          <!-- Real 3D Model GLB Stage -->
           <div class="tour3d-stage" id="panoStage"></div>
           <div class="hotspot-layer" id="panoHotspots"></div>
           <!-- Outdoor PLATEAU 2025 CesiumJS Stage (lazy-initialized on tab click) -->
           <div class="tour3d-stage hidden" id="cityStage"></div>
 
+          <!-- 3D Stage Local Loader -->
+          <div class="stage-loading" id="stageLoader">
+            <div class="stage-spinner"></div>
+            <span id="stageLoaderText">41Fペントハウス実3Dモデルを読み込み中...</span>
+          </div>
+
           <div class="tour3d-hud-top">
-            <span class="tour3d-pill" id="tour3dStatus">41F リビング・ダイニング — ドラッグで見回し・ピンをクリックで移動</span>
+            <span class="tour3d-pill" id="tour3dStatus">01. リビング全景 — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行</span>
             <button class="t3-btn" id="btnTourFs" type="button">全画面</button>
           </div>
 
-          <!-- Controls for Indoor 360° -->
+          <!-- Mobile-Friendly Walk & Zoom Controls for Real 3D Model -->
           <div class="tour3d-controls" id="controlsIndoor">
-            <button class="t3-btn" id="btnPanLeft" type="button">← 左</button>
-            <button class="t3-btn" id="btnPanRight" type="button">右 →</button>
-            <button class="t3-btn" id="btnZoomIn" type="button">＋ 拡大</button>
+            <button class="t3-btn" id="btnWalkFwd" type="button">前進 ↑</button>
+            <button class="t3-btn" id="btnWalkBack" type="button">後退 ↓</button>
+            <button class="t3-btn" id="btnZoomIn" type="button">＋ ズーム</button>
+            <span class="zoom-badge" id="zoomReadout">1.0x</span>
             <button class="t3-btn" id="btnZoomOut" type="button">－ 引く</button>
-            <button class="t3-btn active" id="btnAutoRotate" type="button">自動360°回転</button>
+            <button class="t3-btn active" id="btnAutoRotate" type="button">自動3Dウォーク</button>
           </div>
 
           <!-- Controls for PLATEAU 3D City -->
@@ -1422,54 +1606,64 @@
           </div>
         </div>
 
-        <!-- Synchronized Room Switcher + Interactive SVG Floorplan -->
+        <!-- Synchronized 3D Waypoints + Real-Time Floorplan -->
         <aside class="tour3d-side">
-          <h3 class="side-title">ROOMS &amp; FLOORPLAN（41F 空間モデル）</h3>
+          <h3 class="side-title">3D WAYPOINTS（タップで空間移動）</h3>
           <div class="room-list" id="roomList">
             <button class="room-btn active" data-room="living" type="button">
-              <img src="assets/pano_living.jpg" alt="リビング・ダイニング" />
-              <span><span class="room-btn-name">01. リビング・ダイニング</span><span class="room-btn-sub">41F 東向きワイド眺望</span></span>
+              <img src="assets/scene_02_living_reveal.jpg" alt="41F リビング全景" />
+              <span><span class="room-btn-name">01. リビング全景</span><span class="room-btn-sub">大理石・真鍮シャンデリア</span></span>
+            </button>
+            <button class="room-btn" data-room="window" type="button">
+              <img src="assets/scene_03_living_tokyo_tower.jpg" alt="41F 窓際・東京タワー正面" />
+              <span><span class="room-btn-name">02. 窓際・東京タワー正面</span><span class="room-btn-sub">全面ガラス越し実寸眺望</span></span>
             </button>
             <button class="room-btn" data-room="kitchen" type="button">
-              <img src="assets/pano_kitchen.jpg" alt="アイランドキッチン" />
-              <span><span class="room-btn-name">02. アイランドキッチン</span><span class="room-btn-sub">天然石カウンター・食洗機</span></span>
+              <img src="assets/scene_04_kitchen_dining.jpg" alt="黒大理石アイランドキッチン" />
+              <span><span class="room-btn-name">03. アイランドキッチン</span><span class="room-btn-sub">ネロマルキーナ・ワイン壁</span></span>
             </button>
-            <button class="room-btn" data-room="bedroom" type="button">
-              <img src="assets/pano_bedroom.jpg" alt="マスターベッドルーム" />
-              <span><span class="room-btn-name">03. マスターベッドルーム</span><span class="room-btn-sub">落ち着きのスイート寝室</span></span>
+            <button class="room-btn" data-room="dining" type="button">
+              <img src="assets/scene_05_dining_skyline.jpg" alt="窓際ウォールナットダイニング" />
+              <span><span class="room-btn-name">04. 窓際ダイニング</span><span class="room-btn-sub">ウォールナット8席</span></span>
             </button>
             <button class="room-btn" data-room="terrace" type="button">
-              <img src="assets/pano_terrace.jpg" alt="41F スカイテラス" />
-              <span><span class="room-btn-name">04. 41F スカイテラス</span><span class="room-btn-sub">地上約150mの開放空間</span></span>
+              <img src="assets/scene_06_sky_terrace.jpg" alt="41F スカイテラス" />
+              <span><span class="room-btn-name">05. 41F スカイテラス</span><span class="room-btn-sub">屋外チークデッキへ移動</span></span>
             </button>
           </div>
 
           <div class="fp-box">
             <div style="font-size:11px; color:var(--ink-muted); margin-bottom:6px; display:flex; justify-content:space-between;">
-              <span>連動間取り図（タップで移動）</span>
-              <span style="color:var(--gold);">↑ 東（東京タワー側）</span>
+              <span>リアルタイム3D間取り図</span>
+              <span style="color:var(--gold);">→ 東（東京タワー側）</span>
             </div>
-            <svg class="fp-svg" viewBox="0 0 240 165" aria-label="41F ペントハウス連動間取り図">
-              <!-- Terrace (East / Top) -->
-              <rect class="fp-zone" data-fp="terrace" x="10" y="8" width="220" height="32" rx="3" />
-              <text class="fp-txt" x="120" y="28">41F スカイテラス</text>
-              <!-- Living & Dining -->
-              <rect class="fp-zone active" data-fp="living" x="10" y="44" width="128" height="110" rx="3" />
-              <text class="fp-txt" x="74" y="96">リビング・ダイニング</text>
-              <!-- Kitchen -->
-              <rect class="fp-zone" data-fp="kitchen" x="142" y="44" width="88" height="52" rx="3" />
-              <text class="fp-txt" x="186" y="74">キッチン</text>
-              <!-- Master Bedroom -->
-              <rect class="fp-zone" data-fp="bedroom" x="142" y="100" width="88" height="54" rx="3" />
-              <text class="fp-txt" x="186" y="131">マスター寝室</text>
-              <!-- Live Camera Position & Radar Cone -->
-              <g id="fpRadar" transform="translate(74, 108) rotate(0)">
-                <path d="M 0 0 L -16 -28 A 32 32 0 0 1 16 -28 Z" fill="rgba(201,165,102,0.34)" />
+            <svg class="fp-svg" viewBox="0 0 240 165" aria-label="41F ペントハウス3D連動間取り図">
+              <!-- Kitchen (North-West / Top-Left) -->
+              <rect class="fp-zone" data-fp="kitchen" x="10" y="8" width="84" height="58" rx="3" />
+              <text class="fp-txt" x="52" y="41">キッチン</text>
+              <!-- Dining (North-East / Top-Mid) -->
+              <rect class="fp-zone" data-fp="dining" x="98" y="8" width="76" height="58" rx="3" />
+              <text class="fp-txt" x="136" y="41">ダイニング</text>
+              <!-- Living (Center-South) -->
+              <rect class="fp-zone active" data-fp="living" x="10" y="70" width="96" height="86" rx="3" />
+              <text class="fp-txt" x="58" y="116">リビング</text>
+              <!-- Window Zone -->
+              <rect class="fp-zone" data-fp="window" x="110" y="70" width="64" height="86" rx="3" />
+              <text class="fp-txt" x="142" y="116">窓際眺望</text>
+              <!-- 41F Sky Terrace (East / Right) -->
+              <rect class="fp-zone" data-fp="terrace" x="178" y="8" width="52" height="148" rx="3" />
+              <text class="fp-txt" x="204" y="82" transform="rotate(90 204 82)">41F スカイテラス</text>
+              <!-- Live 3D Camera Position & Gaze Radar Cone -->
+              <g id="fpRadar" transform="translate(56, 114) rotate(82)">
+                <path d="M 0 0 L -15 -26 A 30 30 0 0 1 15 -26 Z" fill="rgba(201,165,102,0.38)" />
                 <circle cx="0" cy="0" r="5" fill="#c9a566" stroke="#0a0c10" stroke-width="1.5" />
               </g>
             </svg>
           </div>
-          <a href="viewer3d.html" class="t3-btn" style="text-align:center; display:block; padding:9px;">専用全画面ビューア（別ページ）で開く ↗</a>
+          <div style="font-size:11px; color:var(--ink-muted); line-height:1.6;">
+            PC：ドラッグで見回し／ホイールでズーム／WASDで歩行<br />
+            スマホ：1本指ドラッグ／2本指ピンチズーム／下部ボタン歩行
+          </div>
         </aside>
       </div>
     </div>
@@ -1580,7 +1774,7 @@
           <a href="#penthouse">41F MODEL</a>
           <a href="#gallery">GALLERY</a>
           <a href="#outline">OUTLINE</a>
-          <a href="viewer3d.html">3D内覧デモ</a>
+          <a href="#tour3d">実3D内覧</a>
         </div>
       </div>
       <div class="footer-credits">
@@ -1655,9 +1849,12 @@
       }
 
       // Keep hero background video on clean scenic/3D segments (skip opening centered title card & closing endcard)
-      heroVideo.addEventListener("loadedmetadata", () => {
-        if (heroVideo.currentTime < 6.2) heroVideo.currentTime = 6.2;
-      });
+      const ensureHeroScenic = () => {
+        if (heroVideo.currentTime < 6.2 || heroVideo.currentTime >= 34.2) heroVideo.currentTime = 6.2;
+      };
+      if (heroVideo.readyState >= 1) ensureHeroScenic();
+      heroVideo.addEventListener("loadedmetadata", ensureHeroScenic);
+      heroVideo.addEventListener("play", ensureHeroScenic);
       heroVideo.addEventListener("timeupdate", () => {
         if (heroVideo.currentTime >= 34.2) heroVideo.currentTime = 6.2;
       });
@@ -1802,122 +1999,280 @@
       });
 
       // =====================================================================
-      // EMBEDDED 3D DIGITAL VIEWING (Three.js 360° Walkthrough + CesiumJS PLATEAU 2025)
+      // INITIAL LUXURY LOADING ANIMATION CONTROLLER
       // =====================================================================
-      const ROOMS_3D = {
-        living: {
-          name: "41F リビング・ダイニング",
-          img: "assets/pano_living.jpg",
-          fp: [74, 108],
-          hotspots: [
-            { target: "kitchen", label: "キッチンへ移動", yaw: 72, pitch: -12 },
-            { target: "terrace", label: "41F スカイテラスへ", yaw: -10, pitch: -14 },
-            { target: "bedroom", label: "マスター寝室へ", yaw: 138, pitch: -12 }
-          ]
-        },
-        kitchen: {
-          name: "アイランドキッチン",
-          img: "assets/pano_kitchen.jpg",
-          fp: [186, 70],
-          hotspots: [
-            { target: "living", label: "リビングへ戻る", yaw: -92, pitch: -13 },
-            { target: "bedroom", label: "マスター寝室へ", yaw: 118, pitch: -13 }
-          ]
-        },
-        bedroom: {
-          name: "マスターベッドルーム",
-          img: "assets/pano_bedroom.jpg",
-          fp: [186, 128],
-          hotspots: [
-            { target: "living", label: "リビングへ戻る", yaw: -112, pitch: -13 },
-            { target: "terrace", label: "41F スカイテラスへ", yaw: 26, pitch: -12 }
-          ]
-        },
-        terrace: {
-          name: "41F スカイテラス",
-          img: "assets/pano_terrace.jpg",
-          fp: [120, 24],
-          hotspots: [
-            { target: "living", label: "リビングへ戻る", yaw: 174, pitch: -14 },
-            { target: "bedroom", label: "マスター寝室へ", yaw: 126, pitch: -12 }
-          ]
-        }
-      };
+      const pageLoader = document.getElementById("pageLoader");
+      const loaderRingFg = document.getElementById("loaderRingFg");
+      const loaderBar = document.getElementById("loaderBar");
+      const loaderPct = document.getElementById("loaderPct");
+      const loaderStep = document.getElementById("loaderStep");
+      const loadProgress = { glb: 0, sky: 0, video: 0, dismissed: false };
 
-      let tourMode = "indoor"; // "indoor" | "city"
+      function updatePageLoader(stepText) {
+        if (loadProgress.dismissed) return;
+        const pct = Math.min(100, Math.round(loadProgress.glb * 0.55 + loadProgress.sky * 0.25 + loadProgress.video * 0.20));
+        const dashOffset = 264 - (264 * pct) / 100;
+        loaderRingFg.style.strokeDashoffset = String(dashOffset);
+        loaderBar.style.width = `${pct}%`;
+        loaderPct.textContent = `${pct}%`;
+        if (stepText) loaderStep.textContent = stepText;
+        if (pct >= 100) dismissPageLoader();
+      }
+      function dismissPageLoader() {
+        if (loadProgress.dismissed) return;
+        loadProgress.dismissed = true;
+        loaderRingFg.style.strokeDashoffset = "0";
+        loaderBar.style.width = "100%";
+        loaderPct.textContent = "100%";
+        loaderStep.textContent = "3D空間の準備が整いました";
+        setTimeout(() => pageLoader.classList.add("done"), 340);
+      }
+      // Smooth baseline ticker + guaranteed max 2.4s reveal so mobile never feels stuck
+      let bootTick = 8;
+      const bootTimer = setInterval(() => {
+        if (loadProgress.dismissed) { clearInterval(bootTimer); return; }
+        bootTick = Math.min(92, bootTick + 9);
+        const cur = Math.round(loadProgress.glb * 0.55 + loadProgress.sky * 0.25 + loadProgress.video * 0.20);
+        if (bootTick > cur) {
+          const dashOffset = 264 - (264 * bootTick) / 100;
+          loaderRingFg.style.strokeDashoffset = String(dashOffset);
+          loaderBar.style.width = `${bootTick}%`;
+          loaderPct.textContent = `${bootTick}%`;
+        }
+      }, 150);
+      setTimeout(dismissPageLoader, 2400);
+      heroVideo.addEventListener("loadeddata", () => { loadProgress.video = 100; updatePageLoader(); });
+
+      // =====================================================================
+      // REAL 3D MODEL WALKTHROUGH (Three.js GLB + Real UE 5.5 PLATEAU Skybox + Pinch Zoom & Walk)
+      // =====================================================================
+      // Coordinates in GLB meters: +X = East (Tokyo Tower), +Y = Up, -Z = North (+Z = South)
+      const WAYPOINTS = {
+        living:  { name: "01. リビング全景",            pos: [-2.4, 1.56,  1.4], yaw:  76, pitch: -4, fov: 62 },
+        window:  { name: "02. 41F 窓際・東京タワー正面", pos: [ 2.1, 1.56,  0.2], yaw:  88, pitch: -2, fov: 56 },
+        kitchen: { name: "03. 黒大理石アイランドキッチン", pos: [ 1.0, 1.58, -2.5], yaw: -46, pitch: -8, fov: 64 },
+        dining:  { name: "04. 窓際ウォールナットダイニング", pos: [-0.2, 1.56, -4.1], yaw:  42, pitch: -6, fov: 62 },
+        terrace: { name: "05. 41F スカイテラス",         pos: [ 6.1, 1.58,  0.1], yaw:  90, pitch: -2, fov: 58 }
+      };
+      const FLOOR_HOTSPOTS = [
+        { target: "living",  label: "リビング全景へ",    pos: [-2.2, 0.14,  1.2] },
+        { target: "window",  label: "窓際・東京タワーへ", pos: [ 2.4, 0.14,  0.2] },
+        { target: "kitchen", label: "キッチンへ歩く",    pos: [ 0.5, 0.14, -3.5] },
+        { target: "dining",  label: "ダイニングへ歩く",  pos: [ 2.2, 0.14, -4.6] },
+        { target: "terrace", label: "41F テラスへ出る",  pos: [ 6.1, 0.14,  0.1] }
+      ];
+
+      let tourMode = "indoor";
       let curRoom = "living";
-      let pYaw = 0, pPitch = -2, pFov = 72;
-      let pTargetYaw = 0, pTargetPitch = -2, pTargetFov = 72;
-      let pAutoRot = true, pDragging = false, pLastX = 0, pLastY = 0;
-      let pRenderer = null, pScene = null, pCam = null, pMesh = null;
-      const pTexCache = {};
+      const camPos = { x: -2.4, y: 1.56, z: 1.4 };
+      const tgtPos = { x: -2.4, y: 1.56, z: 1.4 };
+      let pYaw = 76, pPitch = -4, pFov = 62;
+      let pTargetYaw = 76, pTargetPitch = -4, pTargetFov = 62;
+      let pAutoTour = true, autoStepIdx = 0, autoTimer = 0;
+      const autoOrder = ["living", "window", "terrace", "dining", "kitchen"];
+
+      let pRenderer = null, pScene = null, pCam = null;
+      const activePointers = new Map();
+      let pinchStartDist = 0, pinchStartFov = 62;
+      let pDragging = false, pLastX = 0, pLastY = 0;
+      const keysDown = new Set();
 
       const panoStage = document.getElementById("panoStage");
       const cityStage = document.getElementById("cityStage");
       const panoHotspots = document.getElementById("panoHotspots");
       const tour3dStatus = document.getElementById("tour3dStatus");
       const fpRadar = document.getElementById("fpRadar");
+      const stageLoader = document.getElementById("stageLoader");
+      const stageLoaderText = document.getElementById("stageLoaderText");
+      const zoomReadout = document.getElementById("zoomReadout");
 
-      function initIndoor3D() {
+      function clampWalkPos(x, z) {
+        return {
+          x: Math.max(-4.1, Math.min(6.9, x)),
+          z: Math.max(-7.8, Math.min(5.5, z))
+        };
+      }
+
+      function updateZoomUI() {
+        const zFactor = (62 / Math.max(30, pTargetFov)).toFixed(1);
+        if (zoomReadout) zoomReadout.textContent = `${zFactor}x`;
+      }
+
+      function worldToFloorplan(wx, wz) {
+        // Map GLB X [-5..+7.8] -> SVG X [12..226], GLB Z [-9..+7] -> SVG Y [10..154]
+        const sx = 12 + ((wx + 5.0) / 12.8) * 214;
+        const sy = 10 + ((wz + 9.0) / 16.0) * 144;
+        return [Math.max(14, Math.min(226, sx)), Math.max(12, Math.min(154, sy))];
+      }
+
+      function stopAutoTour() {
+        if (pAutoTour) {
+          pAutoTour = false;
+          document.getElementById("btnAutoRotate").classList.remove("active");
+        }
+      }
+
+      function initReal3DWalkthrough() {
         if (!window.THREE || pRenderer) return;
         const w = panoStage.clientWidth || 860;
         const h = panoStage.clientHeight || 580;
+
         pScene = new THREE.Scene();
-        pCam = new THREE.PerspectiveCamera(pFov, w / h, 0.1, 100);
-        pRenderer = new THREE.WebGLRenderer({ antialias: true });
+        pCam = new THREE.PerspectiveCamera(pFov, w / h, 0.08, 300);
+        pCam.position.set(camPos.x, camPos.y, camPos.z);
+
+        pRenderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         pRenderer.setSize(w, h);
-        pRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        pRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
         pRenderer.outputEncoding = THREE.sRGBEncoding;
+        pRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+        pRenderer.toneMappingExposure = 0.94;
+        pRenderer.shadowMap.enabled = true;
+        pRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
         panoStage.appendChild(pRenderer.domElement);
 
-        const geo = new THREE.SphereGeometry(40, 64, 48);
-        geo.scale(-1, 1, 1);
-        pMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-        pScene.add(pMesh);
+        // Rich moody Aman-Tokyo Luxury Architectural Lighting (matches UE 5.5 Lumen Golden Hour)
+        const hemi = new THREE.HemisphereLight(0xffe8cc, 0x24201b, 0.46);
+        pScene.add(hemi);
 
-        const loader = new THREE.TextureLoader();
-        const maxAniso = pRenderer.capabilities.getMaxAnisotropy();
-        Object.entries(ROOMS_3D).forEach(([k, info]) => {
-          loader.load(info.img, (tex) => {
-            tex.encoding = THREE.sRGBEncoding;
-            tex.minFilter = THREE.LinearFilter;
-            tex.magFilter = THREE.LinearFilter;
-            tex.generateMipmaps = false;
-            tex.anisotropy = maxAniso;
-            pTexCache[k] = tex;
-            if (k === curRoom) {
-              pMesh.material.map = tex;
-              pMesh.material.needsUpdate = true;
+        const sun = new THREE.DirectionalLight(0xffd29a, 1.35);
+        sun.position.set(-14, 12, 10);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.near = 1;
+        sun.shadow.camera.far = 45;
+        sun.shadow.camera.left = -12;
+        sun.shadow.camera.right = 12;
+        sun.shadow.camera.top = 12;
+        sun.shadow.camera.bottom = -12;
+        sun.shadow.bias = -0.0005;
+        pScene.add(sun);
+
+        const interiorLights = [
+          [0.85, 2.65,  0.15, 0xffd79e, 1.55, 12], // Living brass ring chandelier
+          [-1.45, 2.35, -5.80, 0xffdfa8, 1.45, 11], // Kitchen marble island pendant
+          [2.35, 2.35, -5.80, 0xffd79e, 1.35, 11],  // Dining walnut pendant
+          [1.60, 0.90,  5.95, 0xff7a28, 1.40, 8],   // Linear fireplace warm glow
+          [5.90, 2.85,  0.00, 0xffe0b5, 0.75, 10]   // Sky terrace canopy glow
+        ];
+        interiorLights.forEach(([x, y, z, col, inten, dist]) => {
+          const pl = new THREE.PointLight(col, inten, dist, 1.6);
+          pl.position.set(x, y, z);
+          pScene.add(pl);
+        });
+
+        // 1. Load REAL UE 5.5 2025 PLATEAU Minato-ku 360° Skybox + PMREM reflections!
+        const pmrem = new THREE.PMREMGenerator(pRenderer);
+        pmrem.compileEquirectangularShader();
+        const texLoader = new THREE.TextureLoader();
+        texLoader.load("assets/skybox_minato_41f_ue5.jpg", (skyTex) => {
+          skyTex.encoding = THREE.sRGBEncoding;
+          skyTex.mapping = THREE.EquirectangularReflectionMapping;
+          pScene.background = skyTex;
+          pScene.environment = pmrem.fromEquirectangular(skyTex).texture;
+          pmrem.dispose();
+          loadProgress.sky = 100;
+          updatePageLoader("港区3D実景スカイボックス適用完了...");
+        });
+
+        // 2. Load REAL 3D 41F Penthouse GLB Mesh!
+        const gltfLoader = new THREE.GLTFLoader();
+        gltfLoader.load(
+          "assets/penthouse_41f.glb",
+          (gltf) => {
+            const root = gltf.scene;
+            root.traverse((obj) => {
+              if (obj.isMesh) {
+                const matName = obj.material && obj.material.name ? obj.material.name : "";
+                const isGlass = matName.includes("Glass");
+                obj.castShadow = !isGlass;
+                obj.receiveShadow = !isGlass;
+                if (obj.material) {
+                  obj.material.envMapIntensity = matName.includes("Marble") || matName.includes("Brass") || matName.includes("Nero") ? 1.35 : 0.75;
+                  obj.material.needsUpdate = true;
+                }
+              }
+            });
+            pScene.add(root);
+            loadProgress.glb = 100;
+            updatePageLoader("41Fペントハウス実3Dモデル準備完了");
+            stageLoader.classList.add("hidden");
+          },
+          (xhr) => {
+            if (xhr.total > 0) {
+              const p = Math.round((xhr.loaded / xhr.total) * 100);
+              loadProgress.glb = p;
+              stageLoaderText.textContent = `41Fペントハウス実3Dモデルを読み込み中... ${p}%`;
+              updatePageLoader(`実3Dモデル読み込み中... ${p}%`);
             }
-          });
-        });
+          },
+          (err) => {
+            console.error("GLB load error:", err);
+            stageLoaderText.textContent = "3Dモデルの読み込みに失敗しました。再読み込みをお試しください。";
+          }
+        );
 
+        // Multi-touch Pointer Handling: 1-finger drag = 360° look, 2-finger pinch = smooth zoom!
         panoStage.addEventListener("pointerdown", (e) => {
-          pDragging = true;
-          pLastX = e.clientX;
-          pLastY = e.clientY;
+          activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
           panoStage.setPointerCapture && panoStage.setPointerCapture(e.pointerId);
+          if (activePointers.size === 1) {
+            pDragging = true;
+            pLastX = e.clientX;
+            pLastY = e.clientY;
+          } else if (activePointers.size === 2) {
+            pDragging = false;
+            const pts = Array.from(activePointers.values());
+            pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+            pinchStartFov = pTargetFov;
+            stopAutoTour();
+          }
         });
-        window.addEventListener("pointermove", (e) => {
-          if (!pDragging || tourMode !== "indoor") return;
+        panoStage.addEventListener("pointermove", (e) => {
+          if (!activePointers.has(e.pointerId) || tourMode !== "indoor") return;
+          activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (activePointers.size === 2) {
+            const pts = Array.from(activePointers.values());
+            const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+            if (pinchStartDist > 10) {
+              const scale = pinchStartDist / Math.max(10, dist);
+              pTargetFov = Math.max(32, Math.min(82, pinchStartFov * scale));
+              updateZoomUI();
+            }
+            return;
+          }
+          if (!pDragging) return;
           const dx = e.clientX - pLastX;
           const dy = e.clientY - pLastY;
           pLastX = e.clientX;
           pLastY = e.clientY;
-          if (Math.abs(dx) + Math.abs(dy) > 2) {
-            pAutoRot = false;
-            document.getElementById("btnAutoRotate").classList.remove("active");
-          }
-          pTargetYaw -= dx * 0.22;
-          pTargetPitch = Math.max(-52, Math.min(52, pTargetPitch + dy * 0.18));
+          if (Math.abs(dx) + Math.abs(dy) > 2) stopAutoTour();
+          pTargetYaw -= dx * 0.24;
+          pTargetPitch = Math.max(-50, Math.min(48, pTargetPitch + dy * 0.20));
         });
-        window.addEventListener("pointerup", () => { pDragging = false; });
+        const endPtr = (e) => {
+          activePointers.delete(e.pointerId);
+          if (activePointers.size < 2) pinchStartDist = 0;
+          if (activePointers.size === 0) pDragging = false;
+        };
+        panoStage.addEventListener("pointerup", endPtr);
+        panoStage.addEventListener("pointercancel", endPtr);
 
+        // Mouse wheel smooth optical zoom
         panoStage.addEventListener("wheel", (e) => {
           if (tourMode !== "indoor") return;
           e.preventDefault();
-          pTargetFov = Math.max(40, Math.min(90, pTargetFov + e.deltaY * 0.04));
+          stopAutoTour();
+          pTargetFov = Math.max(32, Math.min(82, pTargetFov + e.deltaY * 0.035));
+          updateZoomUI();
         }, { passive: false });
+
+        // Keyboard WASD / Arrow free 3D walk
+        window.addEventListener("keydown", (e) => {
+          if (tourMode !== "indoor" || ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
+          if (["KeyW", "KeyS", "KeyA", "KeyD", "ArrowUp", "ArrowDown"].includes(e.code)) keysDown.add(e.code);
+        });
+        window.addEventListener("keyup", (e) => keysDown.delete(e.code));
 
         window.addEventListener("resize", () => {
           if (!pRenderer) return;
@@ -1928,43 +2283,42 @@
           pRenderer.setSize(nw, nh);
         });
 
-        renderHotspots("living");
+        buildFloorHotspots();
+        updateZoomUI();
         requestAnimationFrame(animate3D);
       }
 
-      function renderHotspots(roomKey) {
+      function buildFloorHotspots() {
         panoHotspots.innerHTML = "";
-        const info = ROOMS_3D[roomKey];
-        if (!info) return;
-        info.hotspots.forEach((h) => {
+        FLOOR_HOTSPOTS.forEach((h) => {
           const pin = document.createElement("div");
           pin.className = "hs-pin";
-          pin.dataset.yaw = h.yaw;
-          pin.dataset.pitch = h.pitch;
-          pin.innerHTML = `<div class="hs-ring">➜</div><div class="hs-label">${h.label}</div>`;
+          pin.dataset.target = h.target;
+          pin.dataset.x = h.pos[0];
+          pin.dataset.y = h.pos[1];
+          pin.dataset.z = h.pos[2];
+          pin.innerHTML = `<div class="hs-ring">●</div><div class="hs-label">${h.label}</div>`;
           pin.addEventListener("click", (ev) => {
             ev.stopPropagation();
-            switchRoom(h.target);
+            stopAutoTour();
+            goWaypoint(h.target);
           });
           panoHotspots.appendChild(pin);
         });
       }
 
-      function switchRoom(roomKey) {
-        if (!ROOMS_3D[roomKey]) return;
+      function goWaypoint(roomKey) {
+        const wp = WAYPOINTS[roomKey];
+        if (!wp) return;
         curRoom = roomKey;
-        const info = ROOMS_3D[roomKey];
-        // Subtle Matterport-style zoom pulse transition
-        pTargetFov = 58;
-        setTimeout(() => { pTargetFov = 72; }, 220);
-        if (pMesh && pTexCache[roomKey]) {
-          pMesh.material.map = pTexCache[roomKey];
-          pMesh.material.needsUpdate = true;
-        }
-        pTargetYaw = 0;
-        pTargetPitch = -2;
-        tour3dStatus.textContent = `${info.name} — ドラッグで見回し・ピンをクリックで移動`;
-        renderHotspots(roomKey);
+        tgtPos.x = wp.pos[0];
+        tgtPos.y = wp.pos[1];
+        tgtPos.z = wp.pos[2];
+        pTargetYaw = wp.yaw;
+        pTargetPitch = wp.pitch;
+        pTargetFov = wp.fov;
+        updateZoomUI();
+        tour3dStatus.textContent = `${wp.name} — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行`;
         document.querySelectorAll("#roomList .room-btn").forEach((b) => {
           b.classList.toggle("active", b.dataset.room === roomKey);
         });
@@ -1974,29 +2328,39 @@
         if (tourMode !== "indoor") setTourMode("indoor");
       }
 
+      function walkStep(distMeters) {
+        stopAutoTour();
+        const rad = THREE.MathUtils.degToRad(pYaw);
+        const fx = Math.sin(rad);
+        const fz = -Math.cos(rad);
+        const next = clampWalkPos(tgtPos.x + fx * distMeters, tgtPos.z + fz * distMeters);
+        tgtPos.x = next.x;
+        tgtPos.z = next.z;
+      }
+
       function updateHotspots3D() {
         if (!pCam || tourMode !== "indoor") return;
         const w = panoStage.clientWidth || 860;
         const h = panoStage.clientHeight || 580;
         panoHotspots.querySelectorAll(".hs-pin").forEach((el) => {
-          const yRad = THREE.MathUtils.degToRad(Number(el.dataset.yaw));
-          const pRad = THREE.MathUtils.degToRad(Number(el.dataset.pitch));
-          const v = new THREE.Vector3(
-            Math.cos(pRad) * Math.sin(yRad),
-            Math.sin(pRad),
-            -Math.cos(pRad) * Math.cos(yRad)
-          ).multiplyScalar(20);
+          if (el.dataset.target === curRoom) {
+            el.style.opacity = "0";
+            el.style.pointerEvents = "none";
+            return;
+          }
+          const v = new THREE.Vector3(Number(el.dataset.x), Number(el.dataset.y), Number(el.dataset.z));
+          const dist = v.distanceTo(pCam.position);
           v.project(pCam);
-          if (v.z > 1) {
+          if (v.z > 1 || dist < 1.8) {
             el.style.opacity = "0";
             el.style.pointerEvents = "none";
           } else {
             const x = (v.x * 0.5 + 0.5) * w;
             const y = (-v.y * 0.5 + 0.5) * h;
-            const visible = x > 30 && x < w - 30 && y > 60 && y < h - 70;
+            const visible = x > 36 && x < w - 36 && y > 62 && y < h - 78;
             el.style.left = `${x}px`;
             el.style.top = `${y}px`;
-            el.style.opacity = visible ? "1" : "0";
+            el.style.opacity = visible ? "0.95" : "0";
             el.style.pointerEvents = visible ? "auto" : "none";
           }
         });
@@ -2005,23 +2369,56 @@
       function animate3D() {
         requestAnimationFrame(animate3D);
         if (tourMode === "indoor" && pRenderer && pCam) {
-          if (pAutoRot && !pDragging) pTargetYaw += 0.06;
-          pYaw += (pTargetYaw - pYaw) * 0.12;
-          pPitch += (pTargetPitch - pPitch) * 0.12;
+          // Keyboard smooth free walk
+          if (keysDown.size > 0) {
+            stopAutoTour();
+            const rad = THREE.MathUtils.degToRad(pYaw);
+            const fx = Math.sin(rad), fz = -Math.cos(rad);
+            const rx = Math.cos(rad), rz = Math.sin(rad);
+            let mx = 0, mz = 0;
+            if (keysDown.has("KeyW") || keysDown.has("ArrowUp")) { mx += fx * 0.08; mz += fz * 0.08; }
+            if (keysDown.has("KeyS") || keysDown.has("ArrowDown")) { mx -= fx * 0.08; mz -= fz * 0.08; }
+            if (keysDown.has("KeyD")) { mx += rx * 0.07; mz += rz * 0.07; }
+            if (keysDown.has("KeyA")) { mx -= rx * 0.07; mz -= rz * 0.07; }
+            const clamped = clampWalkPos(tgtPos.x + mx, tgtPos.z + mz);
+            tgtPos.x = clamped.x; tgtPos.z = clamped.z;
+          }
+
+          // Smooth guided 3D walkthrough auto-tour
+          if (pAutoTour && !pDragging) {
+            pTargetYaw += 0.045;
+            autoTimer += 1;
+            if (autoTimer > 360) {
+              autoTimer = 0;
+              autoStepIdx = (autoStepIdx + 1) % autoOrder.length;
+              goWaypoint(autoOrder[autoStepIdx]);
+            }
+          }
+
+          // Smooth 3D position & gaze interpolation
+          camPos.x += (tgtPos.x - camPos.x) * 0.08;
+          camPos.y += (tgtPos.y - camPos.y) * 0.08;
+          camPos.z += (tgtPos.z - camPos.z) * 0.08;
+          pYaw += (pTargetYaw - pYaw) * 0.11;
+          pPitch += (pTargetPitch - pPitch) * 0.11;
           pFov += (pTargetFov - pFov) * 0.12;
+
+          pCam.position.set(camPos.x, camPos.y, camPos.z);
           pCam.fov = pFov;
           pCam.updateProjectionMatrix();
+
           const phi = THREE.MathUtils.degToRad(90 - pPitch);
           const theta = THREE.MathUtils.degToRad(pYaw);
           pCam.lookAt(
-            Math.sin(phi) * Math.sin(theta),
-            Math.cos(phi),
-            -Math.sin(phi) * Math.cos(theta)
+            camPos.x + Math.sin(phi) * Math.sin(theta),
+            camPos.y + Math.cos(phi),
+            camPos.z - Math.sin(phi) * Math.cos(theta)
           );
           pRenderer.render(pScene, pCam);
           updateHotspots3D();
-          const fp = ROOMS_3D[curRoom].fp;
-          fpRadar.setAttribute("transform", `translate(${fp[0]}, ${fp[1]}) rotate(${pYaw.toFixed(1)})`);
+
+          const [fx, fy] = worldToFloorplan(camPos.x, camPos.z);
+          fpRadar.setAttribute("transform", `translate(${fx.toFixed(1)}, ${fy.toFixed(1)}) rotate(${pYaw.toFixed(1)})`);
         } else if (tourMode === "city" && cesiumViewer) {
           cState.heading += (cState.tHeading - cState.heading) * 0.12;
           cState.pitch += (cState.tPitch - cState.pitch) * 0.12;
@@ -2031,20 +2428,29 @@
         }
       }
 
-      // Room & Floorplan bindings
+      // Room, Floorplan, Walk & Zoom bindings
       document.querySelectorAll("#roomList .room-btn").forEach((btn) => {
-        btn.addEventListener("click", () => switchRoom(btn.dataset.room));
+        btn.addEventListener("click", () => { stopAutoTour(); goWaypoint(btn.dataset.room); });
       });
       document.querySelectorAll(".fp-zone").forEach((z) => {
-        z.addEventListener("click", () => switchRoom(z.dataset.fp));
+        z.addEventListener("click", () => { stopAutoTour(); goWaypoint(z.dataset.fp); });
       });
-      document.getElementById("btnPanLeft").addEventListener("click", () => { pAutoRot = false; document.getElementById("btnAutoRotate").classList.remove("active"); pTargetYaw -= 35; });
-      document.getElementById("btnPanRight").addEventListener("click", () => { pAutoRot = false; document.getElementById("btnAutoRotate").classList.remove("active"); pTargetYaw += 35; });
-      document.getElementById("btnZoomIn").addEventListener("click", () => { pTargetFov = Math.max(40, pTargetFov - 10); });
-      document.getElementById("btnZoomOut").addEventListener("click", () => { pTargetFov = Math.min(90, pTargetFov + 10); });
+      document.getElementById("btnWalkFwd").addEventListener("click", () => walkStep(1.4));
+      document.getElementById("btnWalkBack").addEventListener("click", () => walkStep(-1.4));
+      document.getElementById("btnZoomIn").addEventListener("click", () => {
+        stopAutoTour();
+        pTargetFov = Math.max(32, pTargetFov - 9);
+        updateZoomUI();
+      });
+      document.getElementById("btnZoomOut").addEventListener("click", () => {
+        stopAutoTour();
+        pTargetFov = Math.min(82, pTargetFov + 9);
+        updateZoomUI();
+      });
       document.getElementById("btnAutoRotate").addEventListener("click", (e) => {
-        pAutoRot = !pAutoRot;
-        e.currentTarget.classList.toggle("active", pAutoRot);
+        pAutoTour = !pAutoTour;
+        autoTimer = 0;
+        e.currentTarget.classList.toggle("active", pAutoTour);
       });
       document.getElementById("btnTourFs").addEventListener("click", () => {
         const wrap = document.getElementById("tour3dStageWrap");
@@ -2079,7 +2485,8 @@
       function initCity3D() {
         if (cesiumLoaded) return;
         cesiumLoaded = true;
-        tour3dStatus.textContent = "国土交通省 PLATEAU 2025（東京都港区 LOD2）を読み込み中...";
+        stageLoaderText.textContent = "国土交通省 PLATEAU 2025（東京都港区 LOD2）を読み込み中...";
+        stageLoader.classList.remove("hidden");
         const sc = document.createElement("script");
         sc.src = "https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js";
         sc.onload = async () => {
@@ -2129,6 +2536,7 @@
           } catch (err) {
             tour3dStatus.textContent = "PLATEAU 3D街並み（国土地理院航空写真表示中）";
           }
+          stageLoader.classList.add("hidden");
 
           cityStage.addEventListener("pointerdown", (e) => { cDrag = true; cLX = e.clientX; cLY = e.clientY; });
           window.addEventListener("pointermove", (e) => {
@@ -2162,7 +2570,8 @@
         document.getElementById("controlsIndoor").style.display = isIndoor ? "flex" : "none";
         document.getElementById("controlsCity").style.display = isIndoor ? "none" : "flex";
         if (isIndoor) {
-          tour3dStatus.textContent = `${ROOMS_3D[curRoom].name} — ドラッグで見回し・ピンをクリックで移動`;
+          stageLoader.classList.add("hidden");
+          tour3dStatus.textContent = `${WAYPOINTS[curRoom].name} — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行`;
         } else {
           initCity3D();
         }
@@ -2195,7 +2604,7 @@
         });
       });
 
-      initIndoor3D();
+      initReal3DWalkthrough();
     })();
   </script>
 </body>
