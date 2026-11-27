@@ -328,14 +328,14 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      filter: brightness(0.84) contrast(1.04);
+      filter: brightness(0.95) contrast(1.03);
     }
     .hero-scrim {
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(180deg, rgba(8, 10, 14, 0.58) 0%, rgba(8, 10, 14, 0.18) 38%, rgba(8, 10, 14, 0.76) 82%, #0a0c10 100%),
-        linear-gradient(90deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.25) 55%, rgba(8, 10, 14, 0.12) 100%);
+        linear-gradient(180deg, rgba(8, 10, 14, 0.44) 0%, rgba(8, 10, 14, 0.12) 40%, rgba(8, 10, 14, 0.72) 84%, #0a0c10 100%),
+        linear-gradient(90deg, rgba(8, 10, 14, 0.64) 0%, rgba(8, 10, 14, 0.20) 55%, rgba(8, 10, 14, 0.08) 100%);
     }
     .hero-content {
       position: relative;
@@ -814,6 +814,53 @@
       font-size: 12px;
       letter-spacing: 0.06em;
     }
+    .hud-right {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    #btnTourFs {
+      background: rgba(10, 13, 20, 0.86);
+      backdrop-filter: blur(10px);
+      border-color: rgba(201, 165, 102, 0.48);
+      color: var(--ink-light);
+    }
+    .time-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(10, 13, 20, 0.86);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(201, 165, 102, 0.48);
+      padding: 3px;
+      border-radius: 999px;
+    }
+    .time-btn {
+      background: transparent;
+      color: rgba(246, 243, 236, 0.84);
+      border: none;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      transition: all 0.22s var(--ease);
+    }
+    .time-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+    .time-btn.active {
+      background: var(--gold);
+      color: #111318;
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(201, 165, 102, 0.42);
+    }
+    .time-btn[data-sky="night"].active {
+      background: linear-gradient(135deg, #273c75 0%, #4b6cb7 100%);
+      color: #fff6df;
+      box-shadow: 0 2px 12px rgba(75, 108, 183, 0.55);
+    }
     .tour3d-controls {
       position: absolute;
       left: 50%;
@@ -1208,7 +1255,10 @@
         gap: 5px;
       }
       .t3-btn { padding: 7px 10px; font-size: 11.5px; min-height: 34px; }
-      .tour3d-pill { font-size: 10.5px; padding: 5px 10px; max-width: 72%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tour3d-hud-top { flex-wrap: wrap; gap: 6px; top: 10px; left: 10px; right: 10px; }
+      .tour3d-pill { font-size: 10.5px; padding: 5px 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .hud-right { width: 100%; justify-content: space-between; }
+      .time-btn { padding: 5px 9px; font-size: 11px; }
       .room-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .room-btn { grid-template-columns: 1fr; padding: 8px; gap: 6px; }
       .room-btn img { width: 100%; height: 64px; }
@@ -1556,8 +1606,8 @@
         <div>
           <span class="sec-kicker">05 &nbsp; REAL-TIME 3D MODEL VIEWING</span>
           <h2 class="sec-title" style="margin-bottom:8px;">実3Dモデル歩行内覧 ＆ PLATEAU 3D街並みシミュレーター</h2>
-          <p class="theater-note" style="max-width:660px;">
-            静止画ではなく、<strong>41Fペントハウスの3Dモデル本体（GLB）</strong>の中をリアルタイムに歩いて移動できます。1本指ドラッグで360°見回し、2本指ピンチ／ホイールで滑らかズーム、前進・後退や間取り図タップで室内〜テラスまで自由に内覧できます。窓の外はUE 5.5×PLATEAU 2025の実レンダリング港区実景です。
+          <p class="theater-note" style="max-width:680px;">
+            静止画ではなく、<strong>41Fペントハウスの3Dモデル本体（GLB）</strong>の中をリアルタイムに歩いて移動できます。右上のボタンから<strong>「☀️ 昼（晴天）・🌆 夕景・🌃 東京夜景」</strong>をワンタップ切替でき、室内の照明・反射と窓外のUE 5.5×PLATEAU 2025港区実景が同時に切り替わります。
           </p>
         </div>
         <div class="tour3d-tabs" role="tablist">
@@ -1581,8 +1631,15 @@
           </div>
 
           <div class="tour3d-hud-top">
-            <span class="tour3d-pill" id="tour3dStatus">01. リビング全景 — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行</span>
-            <button class="t3-btn" id="btnTourFs" type="button">全画面</button>
+            <span class="tour3d-pill" id="tour3dStatus">01. リビング全景［昼（晴天）］— ドラッグで見回し・ピンチでズーム</span>
+            <div class="hud-right">
+              <div class="time-switch" id="timeSwitch" role="group" aria-label="時間帯・夜景切替">
+                <button class="time-btn active" data-sky="day" type="button">☀️ 昼</button>
+                <button class="time-btn" data-sky="sunset" type="button">🌆 夕景</button>
+                <button class="time-btn" data-sky="night" type="button">🌃 夜景</button>
+              </div>
+              <button class="t3-btn" id="btnTourFs" type="button">全画面</button>
+            </div>
           </div>
 
           <!-- Mobile-Friendly Walk & Zoom Controls for Real 3D Model -->
@@ -1601,8 +1658,9 @@
             <button class="t3-btn" data-city-cam="f15" type="button">15F 眺望</button>
             <button class="t3-btn" data-city-cam="f28" type="button">28F 眺望</button>
             <button class="t3-btn" data-city-cam="f41" type="button">41F 東京タワー正面</button>
-            <button class="t3-btn active" data-city-time="13" type="button">昼景</button>
-            <button class="t3-btn" data-city-time="17" type="button">夕景</button>
+            <button class="t3-btn active" data-city-time="13" type="button">☀️ 昼景</button>
+            <button class="t3-btn" data-city-time="17" type="button">🌆 夕景</button>
+            <button class="t3-btn" data-city-time="20" type="button">🌃 夜景</button>
           </div>
         </div>
 
@@ -2064,6 +2122,37 @@
 
       let tourMode = "indoor";
       let curRoom = "living";
+      let curTimeOfDay = "day";
+      const TIME_PRESETS = {
+        day: {
+          url: "assets/skybox_minato_41f_day.jpg?v=4",
+          label: "昼（晴天）",
+          exposure: 1.16,
+          hemiSky: 0xffffff, hemiGnd: 0x857d70, hemiInt: 0.90,
+          sunCol: 0xfff8ee, sunInt: 1.90, sunPos: [-10, 18, 12],
+          fillCol: 0xebf5ff, fillInt: 0.52,
+          pts: [0.80, 0.80, 0.72, 0.55, 0.40]
+        },
+        sunset: {
+          url: "assets/skybox_minato_41f_ue5.jpg?v=4",
+          label: "夕景",
+          exposure: 1.00,
+          hemiSky: 0xffe8cc, hemiGnd: 0x382e24, hemiInt: 0.58,
+          sunCol: 0xffcf92, sunInt: 1.45, sunPos: [-14, 11, 10],
+          fillCol: 0xffd7a4, fillInt: 0.34,
+          pts: [1.50, 1.40, 1.30, 1.50, 0.80]
+        },
+        night: {
+          url: "assets/skybox_minato_41f_night.jpg?v=4",
+          label: "東京夜景",
+          exposure: 0.86,
+          hemiSky: 0x2a3f72, hemiGnd: 0x16120e, hemiInt: 0.30,
+          sunCol: 0x5c7ec4, sunInt: 0.24, sunPos: [-10, 14, 8],
+          fillCol: 0x3b5896, fillInt: 0.20,
+          pts: [1.85, 1.75, 1.65, 2.25, 1.15]
+        }
+      };
+
       const camPos = { x: -2.4, y: 1.56, z: 1.4 };
       const tgtPos = { x: -2.4, y: 1.56, z: 1.4 };
       let pYaw = 76, pPitch = -4, pFov = 62;
@@ -2072,6 +2161,9 @@
       const autoOrder = ["living", "window", "terrace", "dining", "kitchen"];
 
       let pRenderer = null, pScene = null, pCam = null;
+      let pHemi = null, pSun = null, pFill = null, pSkyDome = null, pPmrem = null, pTexLoader = null;
+      const pPointLights = [];
+      const skyCache = {};
       const activePointers = new Map();
       let pinchStartDist = 0, pinchStartFov = 62;
       let pDragging = false, pLastX = 0, pLastY = 0;
@@ -2085,6 +2177,69 @@
       const stageLoader = document.getElementById("stageLoader");
       const stageLoaderText = document.getElementById("stageLoaderText");
       const zoomReadout = document.getElementById("zoomReadout");
+      const timeSwitch = document.getElementById("timeSwitch");
+
+      function updateTourStatus() {
+        const wp = WAYPOINTS[curRoom];
+        const tp = TIME_PRESETS[curTimeOfDay] || TIME_PRESETS.day;
+        if (wp && tour3dStatus) {
+          tour3dStatus.textContent = `${wp.name}［${tp.label}］— ドラッグで見回し・ピンチでズーム`;
+        }
+      }
+
+      function loadSkyPreset(key, onReady) {
+        if (skyCache[key]) {
+          if (onReady) onReady(skyCache[key]);
+          return;
+        }
+        const preset = TIME_PRESETS[key];
+        if (!preset || !pTexLoader) return;
+        pTexLoader.load(preset.url, (skyTex) => {
+          skyTex.encoding = THREE.sRGBEncoding;
+          skyTex.mapping = THREE.EquirectangularReflectionMapping;
+          const envTex = pPmrem ? pPmrem.fromEquirectangular(skyTex).texture : null;
+          skyCache[key] = { tex: skyTex, env: envTex };
+          if (onReady) onReady(skyCache[key]);
+        });
+      }
+
+      function applyTimeOfDay(key) {
+        const preset = TIME_PRESETS[key];
+        if (!preset || !pRenderer || !pScene) return;
+        curTimeOfDay = key;
+        document.querySelectorAll("#timeSwitch .time-btn").forEach((b) => {
+          b.classList.toggle("active", b.dataset.sky === key);
+        });
+
+        pRenderer.toneMappingExposure = preset.exposure;
+        if (pHemi) {
+          pHemi.color.setHex(preset.hemiSky);
+          pHemi.groundColor.setHex(preset.hemiGnd);
+          pHemi.intensity = preset.hemiInt;
+        }
+        if (pSun) {
+          pSun.color.setHex(preset.sunCol);
+          pSun.intensity = preset.sunInt;
+          pSun.position.set(preset.sunPos[0], preset.sunPos[1], preset.sunPos[2]);
+        }
+        if (pFill) {
+          pFill.color.setHex(preset.fillCol);
+          pFill.intensity = preset.fillInt;
+        }
+        pPointLights.forEach((pl, idx) => {
+          if (preset.pts[idx] !== undefined) pl.intensity = preset.pts[idx];
+        });
+
+        loadSkyPreset(key, (entry) => {
+          if (curTimeOfDay !== key) return;
+          if (pSkyDome) {
+            pSkyDome.material.map = entry.tex;
+            pSkyDome.material.needsUpdate = true;
+          }
+          if (entry.env) pScene.environment = entry.env;
+        });
+        updateTourStatus();
+      }
 
       function clampWalkPos(x, z) {
         return {
@@ -2126,60 +2281,72 @@
         pRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
         pRenderer.outputEncoding = THREE.sRGBEncoding;
         pRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-        pRenderer.toneMappingExposure = 0.94;
+        pRenderer.toneMappingExposure = TIME_PRESETS.day.exposure;
         pRenderer.shadowMap.enabled = true;
         pRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
         panoStage.appendChild(pRenderer.domElement);
 
-        // Rich moody Aman-Tokyo Luxury Architectural Lighting (matches UE 5.5 Lumen Golden Hour)
-        const hemi = new THREE.HemisphereLight(0xffe8cc, 0x24201b, 0.46);
-        pScene.add(hemi);
+        // Dynamic Architectural Lighting (syncs seamlessly across Day / Sunset / Tokyo Night!)
+        pHemi = new THREE.HemisphereLight(TIME_PRESETS.day.hemiSky, TIME_PRESETS.day.hemiGnd, TIME_PRESETS.day.hemiInt);
+        pScene.add(pHemi);
 
-        const sun = new THREE.DirectionalLight(0xffd29a, 1.35);
-        sun.position.set(-14, 12, 10);
-        sun.castShadow = true;
-        sun.shadow.mapSize.set(2048, 2048);
-        sun.shadow.camera.near = 1;
-        sun.shadow.camera.far = 45;
-        sun.shadow.camera.left = -12;
-        sun.shadow.camera.right = 12;
-        sun.shadow.camera.top = 12;
-        sun.shadow.camera.bottom = -12;
-        sun.shadow.bias = -0.0005;
-        pScene.add(sun);
+        pSun = new THREE.DirectionalLight(TIME_PRESETS.day.sunCol, TIME_PRESETS.day.sunInt);
+        pSun.position.set(-10, 18, 12);
+        pSun.castShadow = true;
+        pSun.shadow.mapSize.set(2048, 2048);
+        pSun.shadow.camera.near = 1;
+        pSun.shadow.camera.far = 45;
+        pSun.shadow.camera.left = -12;
+        pSun.shadow.camera.right = 12;
+        pSun.shadow.camera.top = 12;
+        pSun.shadow.camera.bottom = -12;
+        pSun.shadow.bias = -0.0005;
+        pScene.add(pSun);
+
+        // Natural bounce daylight entering through the 16m East panoramic glass wall
+        pFill = new THREE.DirectionalLight(TIME_PRESETS.day.fillCol, TIME_PRESETS.day.fillInt);
+        pFill.position.set(14, 10, -3);
+        pScene.add(pFill);
 
         const interiorLights = [
-          [0.85, 2.65,  0.15, 0xffd79e, 1.55, 12], // Living brass ring chandelier
-          [-1.45, 2.35, -5.80, 0xffdfa8, 1.45, 11], // Kitchen marble island pendant
-          [2.35, 2.35, -5.80, 0xffd79e, 1.35, 11],  // Dining walnut pendant
-          [1.60, 0.90,  5.95, 0xff7a28, 1.40, 8],   // Linear fireplace warm glow
-          [5.90, 2.85,  0.00, 0xffe0b5, 0.75, 10]   // Sky terrace canopy glow
+          [0.85, 2.65,  0.15, 0xffd79e, 0.95, 13], // Living brass ring chandelier
+          [-1.45, 2.35, -5.80, 0xffdfa8, 0.95, 12], // Kitchen marble island pendant
+          [2.35, 2.35, -5.80, 0xffd79e, 0.85, 12],  // Dining walnut pendant
+          [1.60, 0.90,  5.95, 0xff7a28, 0.65, 9],   // Linear fireplace warm glow
+          [5.90, 2.85,  0.00, 0xffe0b5, 0.45, 11]   // Sky terrace canopy glow
         ];
         interiorLights.forEach(([x, y, z, col, inten, dist]) => {
-          const pl = new THREE.PointLight(col, inten, dist, 1.6);
+          const pl = new THREE.PointLight(col, inten, dist, 1.5);
           pl.position.set(x, y, z);
           pScene.add(pl);
+          pPointLights.push(pl);
         });
 
-        // 1. Load REAL UE 5.5 2025 PLATEAU Minato-ku 360° Skybox (bright daylight toneMapped:false sky dome + PMREM reflections!)
-        const pmrem = new THREE.PMREMGenerator(pRenderer);
-        pmrem.compileEquirectangularShader();
-        const texLoader = new THREE.TextureLoader();
-        texLoader.load("assets/skybox_minato_41f_ue5.jpg?v=bright2", (skyTex) => {
-          skyTex.encoding = THREE.sRGBEncoding;
-          skyTex.mapping = THREE.EquirectangularReflectionMapping;
-          // Render outdoor skyline on an un-darkened sky sphere aligned identically to +X East (Tokyo Tower!)
-          const skyGeo = new THREE.SphereGeometry(180, 64, 40);
-          skyGeo.scale(-1, 1, 1);
-          const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false, depthWrite: false });
-          const skyDome = new THREE.Mesh(skyGeo, skyMat);
-          // After scale(-1,1,1), rotate Y by PI so u=0.5 (Azabudai Hills & Tokyo Tower) faces +X East dead-center!
-          skyDome.rotation.y = Math.PI;
-          pScene.add(skyDome);
-          pScene.environment = pmrem.fromEquirectangular(skyTex).texture;
-          pmrem.dispose();
+        // 1. REAL UE 5.5 2025 PLATEAU Minato-ku 360° SkyDome (Day / Sunset / Tokyo Night instant switcher!)
+        pPmrem = new THREE.PMREMGenerator(pRenderer);
+        pPmrem.compileEquirectangularShader();
+        pTexLoader = new THREE.TextureLoader();
+        const skyGeo = new THREE.SphereGeometry(180, 64, 40);
+        skyGeo.scale(-1, 1, 1);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, depthWrite: false });
+        pSkyDome = new THREE.Mesh(skyGeo, skyMat);
+        // After scale(-1,1,1), rotate Y by PI so u=0.5 (Azabudai Hills & Tokyo Tower) faces +X East dead-center!
+        pSkyDome.rotation.y = Math.PI;
+        pScene.add(pSkyDome);
+
+        loadSkyPreset("day", (entry) => {
+          if (curTimeOfDay === "day") {
+            pSkyDome.material.map = entry.tex;
+            pSkyDome.material.needsUpdate = true;
+            if (entry.env) pScene.environment = entry.env;
+          }
           loadProgress.sky = 100;
-          updatePageLoader("港区3D実景スカイボックス適用完了...");
+          updatePageLoader("港区3D実景（昼・夕景・夜景）準備完了...");
+          // Silently preload Night & Sunset skyboxes so 1-tap switching is instant with zero flicker!
+          setTimeout(() => {
+            loadSkyPreset("night");
+            loadSkyPreset("sunset");
+          }, 600);
         });
 
         // 2. Load REAL 3D 41F Penthouse GLB Mesh!
@@ -2325,7 +2492,7 @@
         pTargetPitch = wp.pitch;
         pTargetFov = wp.fov;
         updateZoomUI();
-        tour3dStatus.textContent = `${wp.name} — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行`;
+        updateTourStatus();
         document.querySelectorAll("#roomList .room-btn").forEach((b) => {
           b.classList.toggle("active", b.dataset.room === roomKey);
         });
@@ -2435,7 +2602,10 @@
         }
       }
 
-      // Room, Floorplan, Walk & Zoom bindings
+      // Room, Floorplan, Time-of-Day, Walk & Zoom bindings
+      document.querySelectorAll("#timeSwitch .time-btn").forEach((btn) => {
+        btn.addEventListener("click", () => applyTimeOfDay(btn.dataset.sky));
+      });
       document.querySelectorAll("#roomList .room-btn").forEach((btn) => {
         btn.addEventListener("click", () => { stopAutoTour(); goWaypoint(btn.dataset.room); });
       });
@@ -2576,9 +2746,10 @@
         cityStage.classList.toggle("hidden", isIndoor);
         document.getElementById("controlsIndoor").style.display = isIndoor ? "flex" : "none";
         document.getElementById("controlsCity").style.display = isIndoor ? "none" : "flex";
+        if (timeSwitch) timeSwitch.style.display = isIndoor ? "inline-flex" : "none";
         if (isIndoor) {
           stageLoader.classList.add("hidden");
-          tour3dStatus.textContent = `${WAYPOINTS[curRoom].name} — ドラッグで見回し・ピンチ／ボタンでズーム＆歩行`;
+          updateTourStatus();
         } else {
           initCity3D();
         }
